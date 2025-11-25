@@ -61,14 +61,21 @@ export function SignupForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden border-2 shadow-2xl p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Criar conta</h1>
-                <p className="text-muted-foreground text-sm text-balance">
-                  Preencha os dados para criar sua conta
+                <div className="mb-2">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                    <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight">Junte-se a nós</h1>
+                <p className="text-muted-foreground text-balance">
+                  Crie sua conta e comece a fazer a diferença
                 </p>
               </div>
               {error && (
@@ -132,7 +139,7 @@ export function SignupForm({
                 </FieldDescription>
               </Field>
               <Field>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700">
                   {isLoading ? "Criando conta..." : "Criar conta"}
                 </Button>
               </Field>
@@ -141,19 +148,18 @@ export function SignupForm({
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block">
+          <div className="bg-linear-to-br from-blue-500 to-cyan-600 dark:from-blue-700 dark:to-cyan-900 relative hidden md:flex items-center justify-center p-8">
             <img
-              src="/placeholder.svg"
-              alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+              src="/imagem-login-form.png"
+              alt="Ilustração de cadastro e comunidade"
+              className="w-full h-full object-contain drop-shadow-2xl"
             />
           </div>
         </CardContent>
       </Card>
-      <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
-      </FieldDescription>
+      <p className="text-center text-sm text-muted-foreground">
+        Ao criar uma conta, você concorda com nossos termos de uso
+      </p>
     </div>
   )
 }

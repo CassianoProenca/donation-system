@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { loteService, type Lote, type UnidadeMedida } from '@/services/loteService';
 import { produtoService, type Produto } from '@/services/produtoService';
-import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash, IconFilter, IconX } from '@tabler/icons-react';
 
 export function LotesPage() {
   const [lotes, setLotes] = useState<Lote[]>([]);
@@ -40,8 +40,11 @@ export function LotesPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [editingLote, setEditingLote] = useState<Lote | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [filters, setFilters] = useState<{ produtoId: string; dataEntradaInicio: string; dataEntradaFim: string; comEstoque: string }>({ produtoId: '', dataEntradaInicio: '', dataEntradaFim: '', comEstoque: '' });
+  const [activeFilters, setActiveFilters] = useState<{ produtoId: string; dataEntradaInicio: string; dataEntradaFim: string; comEstoque: string }>({ produtoId: '', dataEntradaInicio: '', dataEntradaFim: '', comEstoque: '' });
   const [formData, setFormData] = useState({
     produtoId: '',
     quantidadeInicial: '',
@@ -58,8 +61,14 @@ export function LotesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
+      const params = new URLSearchParams();
+      if (activeFilters.produtoId) params.append('produtoId', activeFilters.produtoId);
+      if (activeFilters.dataEntradaInicio) params.append('dataEntradaInicio', activeFilters.dataEntradaInicio);
+      if (activeFilters.dataEntradaFim) params.append('dataEntradaFim', activeFilters.dataEntradaFim);
+      if (activeFilters.comEstoque) params.append('comEstoque', activeFilters.comEstoque);
+
       const [lotesData, produtosData] = await Promise.all([
-        loteService.getAll(),
+        loteService.getAll(params.toString() ? `?${params.toString()}` : ''),
         produtoService.getAll(),
       ]);
       setLotes(lotesData);
@@ -73,7 +82,7 @@ export function LotesPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeFilters]);
 
   const handleOpenDialog = (lote?: Lote) => {
     if (lote) {
@@ -200,10 +209,23 @@ export function LotesPage() {
                 <h1 className="text-3xl font-bold">Lotes</h1>
                 <p className="text-muted-foreground">Gerencie os lotes de produtos</p>
               </div>
-              <Button onClick={() => handleOpenDialog()}>
-                <IconPlus className="mr-2 h-4 w-4" />
-                Novo Lote
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant='outline'
+                  onClick={() => setFilterDialogOpen(true)}>
+                  <IconFilter className="mr-2 h-4 w-4" />
+                  Filtrar
+                  {(activeFilters.produtoId || activeFilters.dataEntradaInicio || activeFilters.dataEntradaFim || activeFilters.comEstoque) && (
+                    <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                      {[activeFilters.produtoId, activeFilters.dataEntradaInicio, activeFilters.dataEntradaFim, activeFilters.comEstoque].filter(Boolean).length}
+                    </span>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => handleOpenDialog()}>
+                  <IconPlus className="mr-2 h-4 w-4" />
+                  Novo Lote
+                </Button>
+              </div>
             </div>
 
             {loading ? (
@@ -253,14 +275,14 @@ export function LotesPage() {
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={() => handleOpenDialog(lote)}
                               >
                                 <IconEdit className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={() => handleOpenDeleteDialog(lote.id)}
                               >
@@ -410,7 +432,7 @@ export function LotesPage() {
             <Button variant="outline" onClick={handleCloseDialog} disabled={saving}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button variant="outline" onClick={handleSave} disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
@@ -435,6 +457,88 @@ export function LotesPage() {
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
               {saving ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filtrar Lotes</DialogTitle>
+            <DialogDescription>
+              Aplique filtros para refinar sua busca
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="filter-produto">Produto</Label>
+              <Select value={filters.produtoId} onValueChange={(value) => setFilters({ ...filters, produtoId: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-produto">
+                  <SelectValue placeholder="Selecione o produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos</SelectItem>
+                  {produtos.map((prod) => (
+                    <SelectItem key={prod.id} value={prod.id.toString()}>
+                      {prod.nome}{prod.categoriaNome ? ` (${prod.categoriaNome})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-dataEntradaInicio">Data Entrada Início</Label>
+              <Input
+                id="filter-dataEntradaInicio"
+                type="date"
+                value={filters.dataEntradaInicio}
+                onChange={(e) => setFilters({ ...filters, dataEntradaInicio: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-dataEntradaFim">Data Entrada Fim</Label>
+              <Input
+                id="filter-dataEntradaFim"
+                type="date"
+                value={filters.dataEntradaFim}
+                onChange={(e) => setFilters({ ...filters, dataEntradaFim: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-comEstoque">Estoque</Label>
+              <Select value={filters.comEstoque} onValueChange={(value) => setFilters({ ...filters, comEstoque: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-comEstoque">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos</SelectItem>
+                  <SelectItem value="true">Apenas Com Estoque</SelectItem>
+                  <SelectItem value="false">Sem Estoque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFilters({ produtoId: '', dataEntradaInicio: '', dataEntradaFim: '', comEstoque: '' });
+                setActiveFilters({ produtoId: '', dataEntradaInicio: '', dataEntradaFim: '', comEstoque: '' });
+                setFilterDialogOpen(false);
+              }}
+            >
+              <IconX className="mr-2 h-4 w-4" />
+              Limpar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActiveFilters(filters);
+                setFilterDialogOpen(false);
+              }}
+            >
+              Aplicar Filtros
             </Button>
           </DialogFooter>
         </DialogContent>

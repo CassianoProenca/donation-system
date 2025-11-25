@@ -10,8 +10,8 @@ export interface Produto {
 }
 
 export const produtoService = {
-  async getAll(): Promise<Produto[]> {
-    const response = await api.get('/api/produtos');
+  async getAll(queryString?: string): Promise<Produto[]> {
+    const response = await api.get(`/api/produtos${queryString || ''}`);
     return response.data;
   },
 

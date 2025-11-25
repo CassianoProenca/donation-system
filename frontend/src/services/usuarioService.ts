@@ -9,8 +9,8 @@ export interface Usuario {
 }
 
 export const usuarioService = {
-  async getAll(): Promise<Usuario[]> {
-    const response = await api.get('/api/usuarios');
+  async getAll(queryString?: string): Promise<Usuario[]> {
+    const response = await api.get(`/api/usuarios${queryString || ''}`);
     return response.data;
   },
 

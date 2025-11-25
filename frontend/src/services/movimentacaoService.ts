@@ -32,8 +32,8 @@ export interface Movimentacao {
 }
 
 export const movimentacaoService = {
-  async getAll(): Promise<Movimentacao[]> {
-    const response = await api.get('/api/movimentacoes');
+  async getAll(queryString?: string): Promise<Movimentacao[]> {
+    const response = await api.get(`/api/movimentacoes${queryString || ''}`);
     return response.data;
   },
 

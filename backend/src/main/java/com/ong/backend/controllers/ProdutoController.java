@@ -21,8 +21,10 @@ public class ProdutoController {
     private final ProdutoService produtoService;
 
     @GetMapping
-    public ResponseEntity<List<ProdutoResponseDTO>> listarTodos() {
-        return ResponseEntity.ok(produtoService.listarTodos());
+    public ResponseEntity<List<ProdutoResponseDTO>> listarTodos(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) Long categoriaId) {
+        return ResponseEntity.ok(produtoService.listarComFiltros(nome, categoriaId));
     }
 
     @GetMapping("/simples")

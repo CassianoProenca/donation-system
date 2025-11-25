@@ -25,22 +25,29 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { categoriaService, type Categoria, type TipoCategoria } from '@/services/categoriaService';
-import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash, IconFilter, IconX } from '@tabler/icons-react';
 
 export function CategoriasPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [editingCategoria, setEditingCategoria] = useState<Categoria | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<{ nome: string; descricao: string; tipo: TipoCategoria | '' }>({ nome: '', descricao: '', tipo: '' });
   const [saving, setSaving] = useState(false);
+  const [filters, setFilters] = useState<{ nome: string; tipo: string }>({ nome: '', tipo: '' });
+  const [activeFilters, setActiveFilters] = useState<{ nome: string; tipo: string }>({ nome: '', tipo: '' });
 
   const loadCategorias = async () => {
     try {
       setLoading(true);
-      const data = await categoriaService.getAll();
+      const params = new URLSearchParams();
+      if (activeFilters.nome) params.append('nome', activeFilters.nome);
+      if (activeFilters.tipo) params.append('tipo', activeFilters.tipo);
+
+      const data = await categoriaService.getAll(params.toString() ? `?${params.toString()}` : '');
       setCategorias(data);
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
@@ -51,7 +58,7 @@ export function CategoriasPage() {
 
   useEffect(() => {
     loadCategorias();
-  }, []);
+  }, [activeFilters]);
 
   const handleOpenDialog = (categoria?: Categoria) => {
     if (categoria) {
@@ -139,10 +146,25 @@ export function CategoriasPage() {
                 <h1 className="text-3xl font-bold">Categorias</h1>
                 <p className="text-muted-foreground">Gerencie as categorias de produtos</p>
               </div>
-              <Button onClick={() => handleOpenDialog()}>
-                <IconPlus className="mr-2 h-4 w-4" />
-                Nova Categoria
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant='outline'
+                  onClick={() => setFilterDialogOpen(true)}>
+                  <IconFilter className="mr-2 h-4 w-4" />
+                  Filtrar
+                  {(activeFilters.nome || activeFilters.tipo) && (
+                    <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                      {[activeFilters.nome, activeFilters.tipo].filter(Boolean).length}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  variant='outline'
+                  onClick={() => handleOpenDialog()}>
+                  <IconPlus className="mr-2 h-4 w-4" />
+                  Nova Categoria
+                </Button>
+              </div>
             </div>
 
             {loading ? (
@@ -285,6 +307,66 @@ export function CategoriasPage() {
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
               {saving ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filtrar Categorias</DialogTitle>
+            <DialogDescription>
+              Aplique filtros para refinar sua busca
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="filter-nome">Nome</Label>
+              <Input
+                id="filter-nome"
+                value={filters.nome}
+                onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
+                placeholder="Digite o nome da categoria"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-tipo">Tipo</Label>
+              <Select value={filters.tipo} onValueChange={(value) => setFilters({ ...filters, tipo: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-tipo">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos</SelectItem>
+                  <SelectItem value="ALIMENTO">Alimento</SelectItem>
+                  <SelectItem value="VESTUARIO">Vestuário</SelectItem>
+                  <SelectItem value="ELETRONICO">Eletrônico</SelectItem>
+                  <SelectItem value="HIGIENE">Higiene</SelectItem>
+                  <SelectItem value="OUTROS">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFilters({ nome: '', tipo: '' });
+                setActiveFilters({ nome: '', tipo: '' });
+                setFilterDialogOpen(false);
+              }}
+            >
+              <IconX className="mr-2 h-4 w-4" />
+              Limpar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActiveFilters(filters);
+                setFilterDialogOpen(false);
+              }}
+            >
+              Aplicar Filtros
             </Button>
           </DialogFooter>
         </DialogContent>

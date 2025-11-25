@@ -6,12 +6,14 @@ import com.ong.backend.dto.categoria.CategoriaSimplesDTO;
 import com.ong.backend.exceptions.BusinessException;
 import com.ong.backend.exceptions.ResourceNotFoundException;
 import com.ong.backend.models.Categoria;
+import com.ong.backend.models.TipoCategoria;
 import com.ong.backend.repositories.CategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +27,17 @@ public class CategoriaService {
                 .stream()
                 .map(CategoriaResponseDTO::new)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoriaResponseDTO> listarComFiltros(String nome, String tipo) {
+        List<Categoria> categorias = categoriaRepository.findAll();
+        
+        return categorias.stream()
+                .filter(c -> nome == null || nome.trim().isEmpty() || c.getNome().toLowerCase().contains(nome.trim().toLowerCase()))
+                .filter(c -> tipo == null || tipo.trim().isEmpty() || c.getTipo().name().equalsIgnoreCase(tipo.trim()))
+                .map(CategoriaResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

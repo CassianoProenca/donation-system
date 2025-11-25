@@ -242,7 +242,7 @@ export function EtiquetasPage() {
                           className="max-w-full"
                         />
                       </div>
-                      <Button onClick={handlePrint} className="w-full">
+                      <Button variant="outline" onClick={handlePrint} className="w-full">
                         <IconPrinter className="mr-2 h-4 w-4" />
                         Imprimir Etiqueta
                       </Button>

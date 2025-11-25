@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +30,17 @@ public class ProdutoService {
                 .stream()
                 .map(ProdutoResponseDTO::new)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponseDTO> listarComFiltros(String nome, Long categoriaId) {
+        List<Produto> produtos = produtoRepository.findAll();
+        
+        return produtos.stream()
+                .filter(p -> nome == null || nome.trim().isEmpty() || p.getNome().toLowerCase().contains(nome.trim().toLowerCase()))
+                .filter(p -> categoriaId == null || p.getCategoria().getId().equals(categoriaId))
+                .map(ProdutoResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

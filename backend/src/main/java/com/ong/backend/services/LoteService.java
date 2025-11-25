@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +32,19 @@ public class LoteService {
                 .stream()
                 .map(LoteResponseDTO::new)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoteResponseDTO> listarComFiltros(Long produtoId, String dataEntradaInicio, String dataEntradaFim, Boolean comEstoque) {
+        List<Lote> lotes = loteRepository.findAll();
+        
+        return lotes.stream()
+                .filter(l -> produtoId == null || l.getProduto().getId().equals(produtoId))
+                .filter(l -> dataEntradaInicio == null || dataEntradaInicio.trim().isEmpty() || !l.getDataEntrada().isBefore(LocalDate.parse(dataEntradaInicio)))
+                .filter(l -> dataEntradaFim == null || dataEntradaFim.trim().isEmpty() || !l.getDataEntrada().isAfter(LocalDate.parse(dataEntradaFim)))
+                .filter(l -> comEstoque == null || !comEstoque || l.getQuantidadeAtual() > 0)
+                .map(LoteResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

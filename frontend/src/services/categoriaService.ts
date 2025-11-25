@@ -10,8 +10,8 @@ export interface Categoria {
 }
 
 export const categoriaService = {
-  async getAll(): Promise<Categoria[]> {
-    const response = await api.get('/api/categorias');
+  async getAll(queryString?: string): Promise<Categoria[]> {
+    const response = await api.get(`/api/categorias${queryString || ''}`);
     return response.data;
   },
 

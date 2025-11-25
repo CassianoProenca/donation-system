@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,18 @@ public class UsuarioService {
                 .stream()
                 .map(UsuarioResponseDTO::new)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponseDTO> listarComFiltros(String nome, String email, String perfil) {
+        List<Usuario> usuarios = usuarioRepository.findAll();
+        
+        return usuarios.stream()
+                .filter(u -> nome == null || nome.trim().isEmpty() || u.getNome().toLowerCase().contains(nome.trim().toLowerCase()))
+                .filter(u -> email == null || email.trim().isEmpty() || u.getEmail().toLowerCase().contains(email.trim().toLowerCase()))
+                .filter(u -> perfil == null || perfil.trim().isEmpty() || u.getPerfil().name().equalsIgnoreCase(perfil.trim()))
+                .map(UsuarioResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

@@ -24,8 +24,13 @@ public class MovimentacaoController {
     private final MovimentacaoService movimentacaoService;
 
     @GetMapping
-    public ResponseEntity<List<MovimentacaoResponseDTO>> listarTodas() {
-        return ResponseEntity.ok(movimentacaoService.listarTodas());
+    public ResponseEntity<List<MovimentacaoResponseDTO>> listarTodas(
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) Long loteId,
+            @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) String dataInicio,
+            @RequestParam(required = false) String dataFim) {
+        return ResponseEntity.ok(movimentacaoService.listarComFiltros(tipo, loteId, usuarioId, dataInicio, dataFim));
     }
 
     @GetMapping("/simples")

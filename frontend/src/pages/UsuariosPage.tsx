@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { usuarioService, type Usuario } from '@/services/usuarioService';
-import { IconPlus, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconEdit, IconTrash, IconFilter, IconX } from '@tabler/icons-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,8 +42,11 @@ export function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [filters, setFilters] = useState<{ nome: string; email: string; perfil: string }>({ nome: '', email: '', perfil: '' });
+  const [activeFilters, setActiveFilters] = useState<{ nome: string; email: string; perfil: string }>({ nome: '', email: '', perfil: '' });
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -62,7 +65,12 @@ export function UsuariosPage() {
   const loadUsuarios = async () => {
     try {
       setLoading(true);
-      const data = await usuarioService.getAll();
+      const params = new URLSearchParams();
+      if (activeFilters.nome) params.append('nome', activeFilters.nome);
+      if (activeFilters.email) params.append('email', activeFilters.email);
+      if (activeFilters.perfil) params.append('perfil', activeFilters.perfil);
+
+      const data = await usuarioService.getAll(params.toString() ? `?${params.toString()}` : '');
       setUsuarios(data);
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
@@ -73,7 +81,7 @@ export function UsuariosPage() {
 
   useEffect(() => {
     loadUsuarios();
-  }, []);
+  }, [activeFilters]);
 
   const handleOpenDialog = (usuario?: Usuario) => {
     if (usuario) {
@@ -220,10 +228,23 @@ export function UsuariosPage() {
                 <h1 className="text-3xl font-bold">Usuários</h1>
                 <p className="text-muted-foreground">Gerencie os usuários do sistema</p>
               </div>
-              <Button onClick={() => handleOpenDialog()}>
-                <IconPlus className="mr-2 h-4 w-4" />
-                Novo Usuário
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant='outline'
+                  onClick={() => setFilterDialogOpen(true)}>
+                  <IconFilter className="mr-2 h-4 w-4" />
+                  Filtrar
+                  {(activeFilters.nome || activeFilters.email || activeFilters.perfil) && (
+                    <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                      {[activeFilters.nome, activeFilters.email, activeFilters.perfil].filter(Boolean).length}
+                    </span>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => handleOpenDialog()}>
+                  <IconPlus className="mr-2 h-4 w-4" />
+                  Novo Usuário
+                </Button>
+              </div>
             </div>
 
             {loading ? (
@@ -259,14 +280,14 @@ export function UsuariosPage() {
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={() => handleOpenDialog(usuario)}
                               >
                                 <IconEdit className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
                                 onClick={() => handleOpenDeleteDialog(usuario.id)}
                                 disabled={usuario.id === user?.id}
@@ -358,7 +379,7 @@ export function UsuariosPage() {
             <Button variant="outline" onClick={handleCloseDialog} disabled={saving}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button variant="outline" onClick={handleSave} disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
@@ -383,6 +404,73 @@ export function UsuariosPage() {
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
               {saving ? 'Excluindo...' : 'Excluir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filtrar Usuários</DialogTitle>
+            <DialogDescription>
+              Aplique filtros para refinar sua busca
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="filter-nome">Nome</Label>
+              <Input
+                id="filter-nome"
+                value={filters.nome}
+                onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
+                placeholder="Digite o nome do usuário"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-email">Email</Label>
+              <Input
+                id="filter-email"
+                type="email"
+                value={filters.email}
+                onChange={(e) => setFilters({ ...filters, email: e.target.value })}
+                placeholder="Digite o email do usuário"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-perfil">Perfil</Label>
+              <Select value={filters.perfil} onValueChange={(value) => setFilters({ ...filters, perfil: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-perfil">
+                  <SelectValue placeholder="Selecione o perfil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos</SelectItem>
+                  <SelectItem value="ADMIN">Administrador</SelectItem>
+                  <SelectItem value="VOLUNTARIO">Voluntário</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFilters({ nome: '', email: '', perfil: '' });
+                setActiveFilters({ nome: '', email: '', perfil: '' });
+                setFilterDialogOpen(false);
+              }}
+            >
+              <IconX className="mr-2 h-4 w-4" />
+              Limpar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActiveFilters(filters);
+                setFilterDialogOpen(false);
+              }}
+            >
+              Aplicar Filtros
             </Button>
           </DialogFooter>
         </DialogContent>

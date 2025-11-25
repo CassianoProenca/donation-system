@@ -187,7 +187,7 @@ export function PerfilPage() {
                     </div>
 
                     <div className="flex justify-end gap-2">
-                      <Button type="submit" disabled={saving}>
+                      <Button variant="outline" type="submit" disabled={saving}>
                         {saving ? 'Salvando...' : 'Salvar Alterações'}
                       </Button>
                     </div>

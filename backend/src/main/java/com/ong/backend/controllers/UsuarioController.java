@@ -20,8 +20,11 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
 
     @GetMapping
-    public ResponseEntity<List<UsuarioResponseDTO>> listarTodos() {
-        return ResponseEntity.ok(usuarioService.listarTodos());
+    public ResponseEntity<List<UsuarioResponseDTO>> listarTodos(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String perfil) {
+        return ResponseEntity.ok(usuarioService.listarComFiltros(nome, email, perfil));
     }
 
     @GetMapping("/simples")

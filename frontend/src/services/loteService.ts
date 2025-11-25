@@ -18,8 +18,8 @@ export interface Lote {
 }
 
 export const loteService = {
-  async getAll(): Promise<Lote[]> {
-    const response = await api.get('/api/lotes');
+  async getAll(queryString?: string): Promise<Lote[]> {
+    const response = await api.get(`/api/lotes${queryString || ''}`);
     return response.data;
   },
 

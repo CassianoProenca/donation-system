@@ -33,7 +33,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { movimentacaoService, type Movimentacao } from '@/services/movimentacaoService';
 import { loteService, type Lote } from '@/services/loteService';
-import { IconPlus, IconFilter } from '@tabler/icons-react';
+import { usuarioService, type Usuario } from '@/services/usuarioService';
+import { IconPlus, IconFilter, IconX } from '@tabler/icons-react';
 
 const tipoLabels: Record<string, string> = {
   ENTRADA: 'Entrada',
@@ -52,6 +53,7 @@ const tipoColors: Record<string, 'default' | 'destructive' | 'outline' | 'second
 export function MovimentacoesPage() {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
@@ -60,23 +62,40 @@ export function MovimentacoesPage() {
     tipo: '',
     quantidade: '',
   });
-  const [filters, setFilters] = useState({
-    dataInicio: '',
-    dataFim: '',
+  const [filters, setFilters] = useState<{ tipo: string; loteId: string; usuarioId: string; dataInicio: string; dataFim: string }>({
     tipo: '',
     loteId: '',
+    usuarioId: '',
+    dataInicio: '',
+    dataFim: '',
+  });
+  const [activeFilters, setActiveFilters] = useState<{ tipo: string; loteId: string; usuarioId: string; dataInicio: string; dataFim: string }>({
+    tipo: '',
+    loteId: '',
+    usuarioId: '',
+    dataInicio: '',
+    dataFim: '',
   });
   const [saving, setSaving] = useState(false);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [movimentacoesData, lotesData] = await Promise.all([
-        movimentacaoService.getAll(),
+      const params = new URLSearchParams();
+      if (activeFilters.tipo) params.append('tipo', activeFilters.tipo);
+      if (activeFilters.loteId) params.append('loteId', activeFilters.loteId);
+      if (activeFilters.usuarioId) params.append('usuarioId', activeFilters.usuarioId);
+      if (activeFilters.dataInicio) params.append('dataInicio', activeFilters.dataInicio);
+      if (activeFilters.dataFim) params.append('dataFim', activeFilters.dataFim);
+
+      const [movimentacoesData, lotesData, usuariosData] = await Promise.all([
+        movimentacaoService.getAll(params.toString() ? `?${params.toString()}` : ''),
         loteService.getAll(),
+        usuarioService.getAll(),
       ]);
       setMovimentacoes(movimentacoesData);
       setLotes(lotesData);
+      setUsuarios(usuariosData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -86,7 +105,7 @@ export function MovimentacoesPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activeFilters]);
 
   const handleOpenDialog = () => {
     setFormData({
@@ -141,46 +160,6 @@ export function MovimentacoesPage() {
     }
   };
 
-  const handleApplyFilters = async () => {
-    try {
-      setLoading(true);
-      let filtered = await movimentacaoService.getAll();
-
-      if (filters.dataInicio && filters.dataFim) {
-        filtered = await movimentacaoService.buscarPorPeriodo(
-          filters.dataInicio,
-          filters.dataFim
-        );
-      }
-
-      if (filters.tipo) {
-        filtered = filtered.filter((m) => m.tipo === filters.tipo);
-      }
-
-      if (filters.loteId) {
-        filtered = await movimentacaoService.buscarPorLote(parseInt(filters.loteId));
-      }
-
-      setMovimentacoes(filtered);
-      setFilterDialogOpen(false);
-    } catch (error) {
-      console.error('Erro ao filtrar:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClearFilters = async () => {
-    setFilters({
-      dataInicio: '',
-      dataFim: '',
-      tipo: '',
-      loteId: '',
-    });
-    await loadData();
-    setFilterDialogOpen(false);
-  };
-
   const formatDateTime = (dateTime: string) => {
     return new Date(dateTime).toLocaleString('pt-BR');
   };
@@ -200,11 +179,18 @@ export function MovimentacoesPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setFilterDialogOpen(true)}>
+                <Button
+                  variant='outline'
+                  onClick={() => setFilterDialogOpen(true)}>
                   <IconFilter className="mr-2 h-4 w-4" />
                   Filtrar
+                  {(activeFilters.tipo || activeFilters.loteId || activeFilters.usuarioId || activeFilters.dataInicio || activeFilters.dataFim) && (
+                    <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                      {[activeFilters.tipo, activeFilters.loteId, activeFilters.usuarioId, activeFilters.dataInicio, activeFilters.dataFim].filter(Boolean).length}
+                    </span>
+                  )}
                 </Button>
-                <Button onClick={handleOpenDialog}>
+                <Button variant="outline" onClick={handleOpenDialog}>
                   <IconPlus className="mr-2 h-4 w-4" />
                   Nova Movimentação
                 </Button>
@@ -313,7 +299,7 @@ export function MovimentacoesPage() {
             <Button variant="outline" onClick={handleCloseDialog} disabled={saving}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button variant="outline" onClick={handleSave} disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
@@ -324,40 +310,19 @@ export function MovimentacoesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Filtrar Movimentações</DialogTitle>
-            <DialogDescription>Defina os critérios de filtro</DialogDescription>
+            <DialogDescription>
+              Aplique filtros para refinar sua busca
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="dataInicio">Data Início</Label>
-                <Input
-                  id="dataInicio"
-                  type="date"
-                  value={filters.dataInicio}
-                  onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="dataFim">Data Fim</Label>
-                <Input
-                  id="dataFim"
-                  type="date"
-                  value={filters.dataFim}
-                  onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })}
-                />
-              </div>
-            </div>
             <div className="grid gap-2">
-              <Label htmlFor="tipoFilter">Tipo</Label>
-              <Select
-                value={filters.tipo}
-                onValueChange={(value) => setFilters({ ...filters, tipo: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os tipos" />
+              <Label htmlFor="filter-tipo">Tipo</Label>
+              <Select value={filters.tipo} onValueChange={(value) => setFilters({ ...filters, tipo: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-tipo">
+                  <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="TODOS">Todos</SelectItem>
                   <SelectItem value="ENTRADA">Entrada</SelectItem>
                   <SelectItem value="SAIDA">Saída</SelectItem>
                   <SelectItem value="AJUSTE_PERDA">Ajuste (Perda)</SelectItem>
@@ -366,16 +331,13 @@ export function MovimentacoesPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="loteFilter">Lote</Label>
-              <Select
-                value={filters.loteId}
-                onValueChange={(value) => setFilters({ ...filters, loteId: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os lotes" />
+              <Label htmlFor="filter-lote">Lote</Label>
+              <Select value={filters.loteId} onValueChange={(value) => setFilters({ ...filters, loteId: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-lote">
+                  <SelectValue placeholder="Selecione o lote" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="TODOS">Todos</SelectItem>
                   {lotes.map((lote) => (
                     <SelectItem key={lote.id} value={lote.id.toString()}>
                       {lote.produtoNome} - {lote.codigoBarras}
@@ -384,12 +346,62 @@ export function MovimentacoesPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-usuario">Usuário</Label>
+              <Select value={filters.usuarioId} onValueChange={(value) => setFilters({ ...filters, usuarioId: value === 'TODOS' ? '' : value })}>
+                <SelectTrigger id="filter-usuario">
+                  <SelectValue placeholder="Selecione o usuário" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TODOS">Todos</SelectItem>
+                  {usuarios.map((usuario) => (
+                    <SelectItem key={usuario.id} value={usuario.id.toString()}>
+                      {usuario.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-dataInicio">Data Início</Label>
+              <Input
+                id="filter-dataInicio"
+                type="datetime-local"
+                value={filters.dataInicio}
+                onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="filter-dataFim">Data Fim</Label>
+              <Input
+                id="filter-dataFim"
+                type="datetime-local"
+                value={filters.dataFim}
+                onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })}
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleClearFilters}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFilters({ tipo: '', loteId: '', usuarioId: '', dataInicio: '', dataFim: '' });
+                setActiveFilters({ tipo: '', loteId: '', usuarioId: '', dataInicio: '', dataFim: '' });
+                setFilterDialogOpen(false);
+              }}
+            >
+              <IconX className="mr-2 h-4 w-4" />
               Limpar
             </Button>
-            <Button onClick={handleApplyFilters}>Aplicar Filtros</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setActiveFilters(filters);
+                setFilterDialogOpen(false);
+              }}
+            >
+              Aplicar Filtros
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

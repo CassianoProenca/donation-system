@@ -21,8 +21,12 @@ public class LoteController {
     private final LoteService loteService;
 
     @GetMapping
-    public ResponseEntity<List<LoteResponseDTO>> listarTodos() {
-        return ResponseEntity.ok(loteService.listarTodos());
+    public ResponseEntity<List<LoteResponseDTO>> listarTodos(
+            @RequestParam(required = false) Long produtoId,
+            @RequestParam(required = false) String dataEntradaInicio,
+            @RequestParam(required = false) String dataEntradaFim,
+            @RequestParam(required = false) Boolean comEstoque) {
+        return ResponseEntity.ok(loteService.listarComFiltros(produtoId, dataEntradaInicio, dataEntradaFim, comEstoque));
     }
 
     @GetMapping("/simples")

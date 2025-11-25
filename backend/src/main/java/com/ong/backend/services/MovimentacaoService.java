@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +32,20 @@ public class MovimentacaoService {
                 .stream()
                 .map(MovimentacaoResponseDTO::new)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MovimentacaoResponseDTO> listarComFiltros(String tipo, Long loteId, Long usuarioId, String dataInicio, String dataFim) {
+        List<Movimentacao> movimentacoes = movimentacaoRepository.findAll();
+        
+        return movimentacoes.stream()
+                .filter(m -> tipo == null || tipo.trim().isEmpty() || m.getTipo().name().equalsIgnoreCase(tipo.trim()))
+                .filter(m -> loteId == null || m.getLote().getId().equals(loteId))
+                .filter(m -> usuarioId == null || m.getUsuario().getId().equals(usuarioId))
+                .filter(m -> dataInicio == null || dataInicio.trim().isEmpty() || !m.getDataHora().isBefore(LocalDateTime.parse(dataInicio)))
+                .filter(m -> dataFim == null || dataFim.trim().isEmpty() || !m.getDataHora().isAfter(LocalDateTime.parse(dataFim)))
+                .map(MovimentacaoResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
