@@ -1,7 +1,14 @@
 {
-  "name": "frontend",
-  "private": true,
-  "version": "0.0.0",
+  "name": "donation-system-frontend",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão de Doações para ONGs - Frontend",
+  "author": "Cassiano Melo <cassianomeloprofissional@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cassiano-DEV999/donation-system.git"
+  },
+  "private": false,
   "type": "module",
   "scripts": {
     "dev": "vite",
