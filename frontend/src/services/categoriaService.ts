@@ -1,5 +1,15 @@
 import api from '@/lib/axios';
 
+export interface Page<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}
+
 export interface Categoria {
   id: number;
   nome: string;
@@ -8,9 +18,20 @@ export interface Categoria {
 }
 
 export const categoriaService = {
-  async getAll(queryString?: string): Promise<Categoria[]> {
-    const response = await api.get(`/api/categorias${queryString || ''}`);
+  async getAll(queryString?: string, page = 0, size = 10): Promise<Page<Categoria>> {
+    const paginationQuery = `page=${page}&size=${size}`;
+    const finalQuery = queryString 
+      ? `${queryString}&${paginationQuery}` 
+      : `?${paginationQuery}`;
+
+    const response = await api.get(`/api/categorias${finalQuery}`);
     return response.data;
+  },
+  
+
+  async getAllSimples(): Promise<Categoria[]> {
+      const response = await api.get('/api/categorias/simples');
+      return response.data;
   },
 
   async getById(id: number): Promise<Categoria> {

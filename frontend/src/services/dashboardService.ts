@@ -1,4 +1,5 @@
-import api from '@/lib/axios';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import api from "@/lib/axios";
 
 export interface DashboardStats {
   totalCategorias: number;
@@ -12,13 +13,13 @@ export interface DashboardStats {
 export const dashboardService = {
   async getStats(): Promise<DashboardStats> {
     const [categorias, produtos, lotes, movimentacoes] = await Promise.all([
-      api.get('/api/categorias'),
-      api.get('/api/produtos'),
-      api.get('/api/lotes'),
-      api.get('/api/movimentacoes'),
+      api.get("/api/categorias"),
+      api.get("/api/produtos"),
+      api.get("/api/lotes"),
+      api.get("/api/movimentacoes"),
     ]);
 
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = new Date().toISOString().split("T")[0];
     const movimentacoesHoje = movimentacoes.data.filter((m: any) =>
       m.dataHora?.startsWith(hoje)
     );
@@ -31,8 +32,8 @@ export const dashboardService = {
       return vencimento <= proximoVencimento && vencimento >= new Date();
     });
 
-    const lotesEstoqueBaixo = lotes.data.filter((l: any) =>
-      l.quantidadeAtual < (l.quantidadeInicial * 0.2)
+    const lotesEstoqueBaixo = lotes.data.filter(
+      (l: any) => l.quantidadeAtual < l.quantidadeInicial * 0.2
     );
 
     return {

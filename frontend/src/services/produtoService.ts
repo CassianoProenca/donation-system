@@ -1,4 +1,20 @@
-import api from '@/lib/axios';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import api from "@/lib/axios";
+
+export interface Componente {
+  produtoId: number;
+  nome?: string;
+  quantidade: number;
+}
+export interface Page<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}
 
 export interface Produto {
   id: number;
@@ -7,11 +23,22 @@ export interface Produto {
   codigoBarrasFabricante?: string;
   categoriaId: number;
   categoriaNome?: string;
+  isKit: boolean;
+  componentes: Componente[];
 }
 
 export const produtoService = {
-  async getAll(queryString?: string): Promise<Produto[]> {
-    const response = await api.get(`/api/produtos${queryString || ''}`);
+  async getAll(
+    queryString?: string,
+    page = 0,
+    size = 10
+  ): Promise<Page<Produto>> {
+    const paginationQuery = `page=${page}&size=${size}`;
+    const finalQuery = queryString
+      ? `${queryString}&${paginationQuery}`
+      : `?${paginationQuery}`;
+
+    const response = await api.get(`/api/produtos${finalQuery}`);
     return response.data;
   },
 
@@ -20,12 +47,12 @@ export const produtoService = {
     return response.data;
   },
 
-  async create(data: Omit<Produto, 'id' | 'categoriaNome'>): Promise<Produto> {
-    const response = await api.post('/api/produtos', data);
+  async create(data: any): Promise<Produto> {
+    const response = await api.post("/api/produtos", data);
     return response.data;
   },
 
-  async update(id: number, data: Omit<Produto, 'id' | 'categoriaNome'>): Promise<Produto> {
+  async update(id: number, data: any): Promise<Produto> {
     const response = await api.put(`/api/produtos/${id}`, data);
     return response.data;
   },

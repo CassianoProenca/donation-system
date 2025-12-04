@@ -7,13 +7,18 @@ import com.ong.backend.exceptions.BusinessException;
 import com.ong.backend.exceptions.ResourceNotFoundException;
 import com.ong.backend.models.Usuario;
 import com.ong.backend.repositories.UsuarioRepository;
+import com.ong.backend.specifications.UsuarioSpecs;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -31,15 +36,9 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
-    public List<UsuarioResponseDTO> listarComFiltros(String nome, String email, String perfil) {
-        List<Usuario> usuarios = usuarioRepository.findAll();
-        
-        return usuarios.stream()
-                .filter(u -> nome == null || nome.trim().isEmpty() || u.getNome().toLowerCase().contains(nome.trim().toLowerCase()))
-                .filter(u -> email == null || email.trim().isEmpty() || u.getEmail().toLowerCase().contains(email.trim().toLowerCase()))
-                .filter(u -> perfil == null || perfil.trim().isEmpty() || u.getPerfil().name().equalsIgnoreCase(perfil.trim()))
-                .map(UsuarioResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<UsuarioResponseDTO> listarComFiltros(String nome, String email, String perfil, Pageable pageable) {
+        return usuarioRepository.findAll(UsuarioSpecs.comFiltros(nome, email, perfil), pageable)
+                .map(UsuarioResponseDTO::new);
     }
 
     @Transactional(readOnly = true)

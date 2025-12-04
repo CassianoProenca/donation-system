@@ -7,12 +7,16 @@ import com.ong.backend.exceptions.BusinessException;
 import com.ong.backend.exceptions.ResourceNotFoundException;
 import com.ong.backend.models.Categoria;
 import com.ong.backend.repositories.CategoriaRepository;
+import com.ong.backend.specifications.CategoriaSpecs;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,13 +33,9 @@ public class CategoriaService {
     }
 
     @Transactional(readOnly = true)
-    public List<CategoriaResponseDTO> listarComFiltros(String nome, String tipo) {
-        List<Categoria> categorias = categoriaRepository.findAll();
-        
-        return categorias.stream()
-                .filter(c -> nome == null || nome.trim().isEmpty() || c.getNome().toLowerCase().contains(nome.trim().toLowerCase()))
-                .map(CategoriaResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<CategoriaResponseDTO> listarComFiltros(String nome, Pageable pageable) {
+        return categoriaRepository.findAll(CategoriaSpecs.comFiltros(nome), pageable)
+                .map(CategoriaResponseDTO::new);
     }
 
     @Transactional(readOnly = true)

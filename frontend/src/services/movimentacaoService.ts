@@ -1,10 +1,10 @@
-import api from '@/lib/axios';
+import api from "@/lib/axios";
 
 export interface Movimentacao {
   id: number;
   loteId: number;
   usuarioId: number;
-  tipo: 'ENTRADA' | 'SAIDA' | 'AJUSTE_PERDA' | 'AJUSTE_GANHO';
+  tipo: "ENTRADA" | "SAIDA" | "AJUSTE_PERDA" | "AJUSTE_GANHO";
   quantidade: number;
   dataHora: string;
   lote?: {
@@ -37,7 +37,7 @@ export interface Movimentacao {
 
 export const movimentacaoService = {
   async getAll(queryString?: string): Promise<Movimentacao[]> {
-    const response = await api.get(`/api/movimentacoes${queryString || ''}`);
+    const response = await api.get(`/api/movimentacoes${queryString || ""}`);
     return response.data;
   },
 
@@ -46,8 +46,13 @@ export const movimentacaoService = {
     return response.data;
   },
 
-  async create(data: Omit<Movimentacao, 'id' | 'dataHora' | 'loteProdutoNome' | 'usuarioNome'>): Promise<Movimentacao> {
-    const response = await api.post('/api/movimentacoes', data);
+  async create(
+    data: Omit<
+      Movimentacao,
+      "id" | "dataHora" | "loteProdutoNome" | "usuarioNome"
+    >
+  ): Promise<Movimentacao> {
+    const response = await api.post("/api/movimentacoes", data);
     return response.data;
   },
 
@@ -55,9 +60,12 @@ export const movimentacaoService = {
     await api.delete(`/api/movimentacoes/${id}`);
   },
 
-  async buscarPorPeriodo(dataInicio: string, dataFim: string): Promise<Movimentacao[]> {
-    const response = await api.get('/api/movimentacoes/periodo', {
-      params: { dataInicio, dataFim }
+  async buscarPorPeriodo(
+    dataInicio: string,
+    dataFim: string
+  ): Promise<Movimentacao[]> {
+    const response = await api.get("/api/movimentacoes/periodo", {
+      params: { dataInicio, dataFim },
     });
     return response.data;
   },
@@ -65,5 +73,12 @@ export const movimentacaoService = {
   async buscarPorLote(loteId: number): Promise<Movimentacao[]> {
     const response = await api.get(`/api/movimentacoes/lote/${loteId}`);
     return response.data;
+  },
+
+  async montarKit(data: {
+    produtoKitId: number;
+    quantidade: number;
+  }): Promise<void> {
+    await api.post("/api/movimentacoes/montagem", data);
   },
 };

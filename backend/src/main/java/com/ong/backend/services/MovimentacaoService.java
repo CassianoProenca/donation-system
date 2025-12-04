@@ -4,19 +4,31 @@ import com.ong.backend.dto.movimentacao.MovimentacaoRequestDTO;
 import com.ong.backend.dto.movimentacao.MovimentacaoResponseDTO;
 import com.ong.backend.dto.movimentacao.MovimentacaoSimplesDTO;
 import com.ong.backend.dto.movimentacao.MovimentacaoDetalhesDTO;
+import com.ong.backend.dto.movimentacao.MontagemKitRequestDTO;
+import com.ong.backend.dto.lote.LoteItemRequestDTO;
+import com.ong.backend.dto.lote.LoteRequestDTO;
+import com.ong.backend.exceptions.BusinessException;
 import com.ong.backend.exceptions.ResourceNotFoundException;
+import com.ong.backend.models.ComposicaoProduto;
 import com.ong.backend.models.Lote;
 import com.ong.backend.models.Movimentacao;
+import com.ong.backend.models.Produto;
 import com.ong.backend.models.TipoMovimentacao;
 import com.ong.backend.models.Usuario;
 import com.ong.backend.repositories.MovimentacaoRepository;
+import com.ong.backend.specifications.MovimentacaoSpecs;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +37,7 @@ public class MovimentacaoService {
     private final MovimentacaoRepository movimentacaoRepository;
     private final LoteService loteService;
     private final UsuarioService usuarioService;
+    private final ProdutoService produtoService;
 
     @Transactional(readOnly = true)
     public List<MovimentacaoResponseDTO> listarTodas() {
@@ -35,17 +48,21 @@ public class MovimentacaoService {
     }
 
     @Transactional(readOnly = true)
-    public List<MovimentacaoResponseDTO> listarComFiltros(String tipo, Long loteId, Long usuarioId, String dataInicio, String dataFim) {
-        List<Movimentacao> movimentacoes = movimentacaoRepository.findAll();
-        
-        return movimentacoes.stream()
-                .filter(m -> tipo == null || tipo.trim().isEmpty() || m.getTipo().name().equalsIgnoreCase(tipo.trim()))
-                .filter(m -> loteId == null || m.getLote().getId().equals(loteId))
-                .filter(m -> usuarioId == null || m.getUsuario().getId().equals(usuarioId))
-                .filter(m -> dataInicio == null || dataInicio.trim().isEmpty() || !m.getDataHora().isBefore(LocalDateTime.parse(dataInicio)))
-                .filter(m -> dataFim == null || dataFim.trim().isEmpty() || !m.getDataHora().isAfter(LocalDateTime.parse(dataFim)))
-                .map(MovimentacaoResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<MovimentacaoResponseDTO> listarComFiltros(
+            String tipo,
+            Long loteId,
+            Long usuarioId,
+            String dataInicioStr,
+            String dataFimStr,
+            Pageable pageable) {
+        LocalDateTime inicio = (dataInicioStr != null && !dataInicioStr.isEmpty()) ? LocalDateTime.parse(dataInicioStr)
+                : null;
+        LocalDateTime fim = (dataFimStr != null && !dataFimStr.isEmpty()) ? LocalDateTime.parse(dataFimStr) : null;
+
+        Specification<Movimentacao> spec = MovimentacaoSpecs.comFiltros(tipo, loteId, usuarioId, inicio, fim);
+
+        return movimentacaoRepository.findAll(spec, pageable)
+                .map(MovimentacaoResponseDTO::new);
     }
 
     @Transactional(readOnly = true)
@@ -109,8 +126,7 @@ public class MovimentacaoService {
     @Transactional
     public MovimentacaoResponseDTO criar(MovimentacaoRequestDTO dto, String emailUsuarioAutenticado) {
         Lote lote = loteService.buscarEntidadePorId(dto.loteId());
-        
-        // Se usuarioId não for fornecido, usa o usuário autenticado
+
         Usuario usuario;
         if (dto.usuarioId() != null) {
             usuario = usuarioService.buscarEntidadePorId(dto.usuarioId());
@@ -151,5 +167,48 @@ public class MovimentacaoService {
     private int calcularQuantidadeAnterior(Movimentacao movimentacao, int quantidadeAtual) {
         int delta = calcularDelta(movimentacao.getTipo(), movimentacao.getQuantidade());
         return quantidadeAtual - delta;
+    }
+
+    @Transactional
+    public MovimentacaoResponseDTO montarKit(MontagemKitRequestDTO dto, String emailUsuario) {
+        Produto kit = produtoService.buscarEntidadePorId(dto.produtoKitId());
+
+        if (!kit.isKit()) {
+            throw new BusinessException("O produto informado não é um Kit (item composto).");
+        }
+
+        if (kit.getComponentes().isEmpty()) {
+            throw new BusinessException("Este kit não possui componentes definidos na sua 'receita'.");
+        }
+
+        for (ComposicaoProduto itemReceita : kit.getComponentes()) {
+            int qtdTotalNecessaria = itemReceita.getQuantidade() * dto.quantidade();
+
+            loteService.consumirEstoquePorProduto(itemReceita.getComponente().getId(), qtdTotalNecessaria);
+        }
+        LoteItemRequestDTO itemKit = new LoteItemRequestDTO(
+                kit.getId(),
+                dto.quantidade(),
+                null, // validade
+                null, // tamanho
+                null // voltagem
+        );
+
+        LoteRequestDTO novoLoteDto = new LoteRequestDTO(
+                Collections.singletonList(itemKit),
+                java.time.LocalDate.now(),
+                com.ong.backend.models.UnidadeMedida.UNIDADE,
+                "Montagem automática de Kit: " + kit.getNome());
+
+        var loteCriadoResponse = loteService.criar(novoLoteDto, emailUsuario);
+
+        List<MovimentacaoSimplesDTO> movimentacoes = buscarPorLote(loteCriadoResponse.id());
+
+        if (movimentacoes.isEmpty()) {
+            throw new BusinessException("Erro interno: Movimentação não encontrada após criação do lote.");
+        }
+
+        Long ultimaMovimentacaoId = movimentacoes.get(0).id();
+        return buscarPorId(ultimaMovimentacaoId);
     }
 }

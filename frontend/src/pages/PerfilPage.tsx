@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -90,7 +91,6 @@ export function PerfilPage() {
           <SiteHeader />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="mx-auto max-w-4xl space-y-6">
-              {/* Card de Informações do Usuário */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-4">
@@ -117,7 +117,6 @@ export function PerfilPage() {
                 </CardContent>
               </Card>
 
-              {/* Card de Edição */}
               <Card>
                 <CardHeader>
                   <CardTitle>Editar Informações</CardTitle>
@@ -195,7 +194,6 @@ export function PerfilPage() {
                 </CardContent>
               </Card>
 
-              {/* Card de Informações da Conta */}
               <Card>
                 <CardHeader>
                   <CardTitle>Informações da Conta</CardTitle>

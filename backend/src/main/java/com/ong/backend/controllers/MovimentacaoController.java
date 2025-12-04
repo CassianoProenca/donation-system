@@ -4,6 +4,7 @@ import com.ong.backend.dto.movimentacao.MovimentacaoRequestDTO;
 import com.ong.backend.dto.movimentacao.MovimentacaoResponseDTO;
 import com.ong.backend.dto.movimentacao.MovimentacaoSimplesDTO;
 import com.ong.backend.dto.movimentacao.MovimentacaoDetalhesDTO;
+import com.ong.backend.dto.movimentacao.MontagemKitRequestDTO;
 import com.ong.backend.models.TipoMovimentacao;
 import com.ong.backend.services.MovimentacaoService;
 import jakarta.validation.Valid;
@@ -12,6 +13,10 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,13 +29,15 @@ public class MovimentacaoController {
     private final MovimentacaoService movimentacaoService;
 
     @GetMapping
-    public ResponseEntity<List<MovimentacaoResponseDTO>> listarTodas(
+    public ResponseEntity<Page<MovimentacaoResponseDTO>> listarTodas(
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) Long loteId,
             @RequestParam(required = false) Long usuarioId,
             @RequestParam(required = false) String dataInicio,
-            @RequestParam(required = false) String dataFim) {
-        return ResponseEntity.ok(movimentacaoService.listarComFiltros(tipo, loteId, usuarioId, dataInicio, dataFim));
+            @RequestParam(required = false) String dataFim,
+            @PageableDefault(page = 0, size = 10, sort = "dataHora", direction = Sort.Direction.DESC) Pageable pageable) {
+        
+        return ResponseEntity.ok(movimentacaoService.listarComFiltros(tipo, loteId, usuarioId, dataInicio, dataFim, pageable));
     }
 
     @GetMapping("/simples")
@@ -81,5 +88,15 @@ public class MovimentacaoController {
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         movimentacaoService.deletar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/montagem")
+    public ResponseEntity<MovimentacaoResponseDTO> montarKit(
+            @Valid @RequestBody MontagemKitRequestDTO dto,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal 
+            org.springframework.security.core.userdetails.UserDetails userDetails) {
+        
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(movimentacaoService.montarKit(dto, userDetails.getUsername()));
     }
 }

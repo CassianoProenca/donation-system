@@ -6,6 +6,11 @@ import com.ong.backend.dto.usuario.UsuarioSimplesDTO;
 import com.ong.backend.services.UsuarioService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,11 +25,12 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
 
     @GetMapping
-    public ResponseEntity<List<UsuarioResponseDTO>> listarTodos(
+    public ResponseEntity<Page<UsuarioResponseDTO>> listarTodos(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) String email,
-            @RequestParam(required = false) String perfil) {
-        return ResponseEntity.ok(usuarioService.listarComFiltros(nome, email, perfil));
+            @RequestParam(required = false) String perfil,
+            @PageableDefault(page = 0, size = 10, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(usuarioService.listarComFiltros(nome, email, perfil, pageable));
     }
 
     @GetMapping("/simples")

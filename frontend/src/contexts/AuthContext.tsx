@@ -1,18 +1,29 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import api from '@/lib/axios';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import api from "@/lib/axios";
 
 interface User {
   id: number;
   nome: string;
   email: string;
-  perfil: 'ADMIN' | 'VOLUNTARIO';
+  perfil: "ADMIN" | "VOLUNTARIO";
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, senha: string) => Promise<void>;
-  register: (nome: string, email: string, senha: string, perfil: 'ADMIN' | 'VOLUNTARIO') => Promise<void>;
+  register: (
+    nome: string,
+    email: string,
+    senha: string,
+    perfil: "ADMIN" | "VOLUNTARIO"
+  ) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
   loading: boolean;
@@ -22,7 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function decodeToken(token: string): User | null {
   try {
-    const payload = token.split('.')[1];
+    const payload = token.split(".")[1];
     const decoded = JSON.parse(atob(payload));
 
     return {
@@ -32,7 +43,7 @@ function decodeToken(token: string): User | null {
       perfil: decoded.perfil,
     };
   } catch (error) {
-    console.error('Erro ao decodificar token:', error);
+    console.error("Erro ao decodificar token:", error);
     return null;
   }
 }
@@ -43,9 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
 
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem("token");
 
     if (storedToken) {
       try {
@@ -54,37 +65,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(storedToken);
           setUser(decodedUser);
         } else {
-          localStorage.removeItem('token');
+          localStorage.removeItem("token");
         }
       } catch (error) {
-        console.error('Erro ao processar token:', error);
-        localStorage.removeItem('token');
+        console.error("Erro ao processar token:", error);
+        localStorage.removeItem("token");
       }
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, senha: string) => {
-    const response = await api.post('/api/auth/login', { email, senha });
+    const response = await api.post("/api/auth/login", { email, senha });
     const { token: newToken } = response.data;
 
     const decodedUser = decodeToken(newToken);
     if (decodedUser) {
       setToken(newToken);
       setUser(decodedUser);
-      localStorage.setItem('token', newToken);
+      localStorage.setItem("token", newToken);
     }
   };
 
-  const register = async (nome: string, email: string, senha: string, perfil: 'ADMIN' | 'VOLUNTARIO') => {
-    await api.post('/api/usuarios', { nome, email, senha, perfil });
+  const register = async (
+    nome: string,
+    email: string,
+    senha: string,
+    perfil: "ADMIN" | "VOLUNTARIO"
+  ) => {
+    await api.post("/api/usuarios", { nome, email, senha, perfil });
     await login(email, senha);
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
   };
 
   return (
@@ -107,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

@@ -6,6 +6,11 @@ import com.ong.backend.dto.categoria.CategoriaSimplesDTO;
 import com.ong.backend.services.CategoriaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,10 +24,11 @@ public class CategoriaController {
 
     private final CategoriaService categoriaService;
 
-    @GetMapping
-    public ResponseEntity<List<CategoriaResponseDTO>> listarTodas(
-            @RequestParam(required = false) String nome) {
-        return ResponseEntity.ok(categoriaService.listarComFiltros(nome, null));
+   @GetMapping
+    public ResponseEntity<Page<CategoriaResponseDTO>> listarTodas(
+            @RequestParam(required = false) String nome,
+            @PageableDefault(page = 0, size = 10, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(categoriaService.listarComFiltros(nome, pageable));
     }
 
     @GetMapping("/simples")

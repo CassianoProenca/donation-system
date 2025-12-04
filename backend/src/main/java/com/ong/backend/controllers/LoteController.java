@@ -7,6 +7,11 @@ import com.ong.backend.dto.lote.LoteDetalhesDTO;
 import com.ong.backend.services.LoteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,12 +28,22 @@ public class LoteController {
     private final LoteService loteService;
 
     @GetMapping
-    public ResponseEntity<List<LoteResponseDTO>> listarTodos(
+    public ResponseEntity<Page<LoteResponseDTO>> listarTodos(
             @RequestParam(required = false) Long produtoId,
             @RequestParam(required = false) String dataEntradaInicio,
             @RequestParam(required = false) String dataEntradaFim,
-            @RequestParam(required = false) Boolean comEstoque) {
-        return ResponseEntity.ok(loteService.listarComFiltros(produtoId, dataEntradaInicio, dataEntradaFim, comEstoque));
+            @RequestParam(required = false) Boolean comEstoque,
+            @RequestParam(required = false) String busca,
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+        
+        return ResponseEntity.ok(loteService.listarComFiltros(
+            produtoId, 
+            dataEntradaInicio, 
+            dataEntradaFim, 
+            comEstoque, 
+            busca, 
+            pageable
+        ));
     }
 
     @GetMapping("/simples")

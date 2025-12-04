@@ -1,42 +1,61 @@
-import { useState, useEffect, useRef } from 'react';
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SiteHeader } from '@/components/site-header';
-import { Button } from '@/components/ui/button';
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { loteService, type Lote } from '@/services/loteService';
-import { IconPrinter } from '@tabler/icons-react';
-import { useReactToPrint } from 'react-to-print';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { loteService, type Lote } from "@/services/loteService";
+import { etiquetaService } from "@/services/etiquetaService";
+import {
+  IconFileTypePdf,
+  IconLoader,
+  IconSearch,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 
 export function EtiquetasPage() {
   const [lotes, setLotes] = useState<Lote[]>([]);
-  const [selectedLoteId, setSelectedLoteId] = useState<string>('');
-  const [tamanhoEtiqueta, setTamanhoEtiqueta] = useState<string>('MEDIO');
-  const [etiquetaUrl, setEtiquetaUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [loadingEtiqueta, setLoadingEtiqueta] = useState(false);
-  const [errorEtiqueta, setErrorEtiqueta] = useState<string>('');
-  const printRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-  });
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [selectedBatchIds, setSelectedBatchIds] = useState<number[]>([]);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const loadLotes = async () => {
     try {
       setLoading(true);
-      const data = await loteService.getAll();
-      setLotes(data);
+      const params = new URLSearchParams();
+      if (searchTerm) params.append("busca", searchTerm); 
+
+      const data = await loteService.getAll(
+        params.toString() ? `?${params.toString()}` : "",
+        page
+      );
+
+      setLotes(data.content);
+      setTotalPages(data.totalPages);
+      setTotalElements(data.totalElements);
     } catch (error) {
-      console.error('Erro ao carregar lotes:', error);
+      console.error("Erro ao carregar lotes:", error);
+      toast.error("Erro ao carregar lista de lotes");
     } finally {
       setLoading(false);
     }
@@ -44,71 +63,60 @@ export function EtiquetasPage() {
 
   useEffect(() => {
     loadLotes();
-  }, []);
+  }, [page]);
 
-  const loadEtiqueta = async (loteId: number, tamanho: string) => {
-    try {
-      setLoadingEtiqueta(true);
-      setErrorEtiqueta('');
-
-      const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
-      const response = await fetch(`${baseUrl}/api/etiquetas/lote/${loteId}?tamanho=${tamanho}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }); if (!response.ok) {
-        throw new Error('Erro ao carregar etiqueta');
-      }
-
-      const blob = await response.blob();
-      const imageUrl = URL.createObjectURL(blob);
-
-      if (etiquetaUrl) {
-        URL.revokeObjectURL(etiquetaUrl);
-      }
-
-      setEtiquetaUrl(imageUrl);
-    } catch (error) {
-      console.error('Erro ao carregar etiqueta:', error);
-      setErrorEtiqueta('Erro ao carregar etiqueta. Tente novamente.');
-      setEtiquetaUrl('');
-    } finally {
-      setLoadingEtiqueta(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setPage(0);
+      loadLotes();
     }
   };
 
-  const handleLoteSelect = (loteId: string) => {
-    setSelectedLoteId(loteId);
-    const lote = lotes.find((l) => l.id.toString() === loteId);
-    if (lote && lote.codigoBarras) {
-      loadEtiqueta(lote.id, tamanhoEtiqueta);
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const idsPagina = lotes.map((l) => l.id);
+      const novos = idsPagina.filter((id) => !selectedBatchIds.includes(id));
+      setSelectedBatchIds((prev) => [...prev, ...novos]);
     } else {
-      setEtiquetaUrl('');
-      setErrorEtiqueta('');
+      const idsPagina = lotes.map((l) => l.id);
+      setSelectedBatchIds((prev) =>
+        prev.filter((id) => !idsPagina.includes(id))
+      );
     }
   };
 
-  const handleTamanhoChange = (novoTamanho: string) => {
-    setTamanhoEtiqueta(novoTamanho);
-    if (selectedLoteId) {
-      const lote = lotes.find((l) => l.id.toString() === selectedLoteId);
-      if (lote) {
-        loadEtiqueta(lote.id, novoTamanho);
-      }
+  const toggleSelectLote = (loteId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedBatchIds((prev) => [...prev, loteId]);
+    } else {
+      setSelectedBatchIds((prev) => prev.filter((id) => id !== loteId));
     }
   };
 
-  useEffect(() => {
-    return () => {
-      if (etiquetaUrl) {
-        URL.revokeObjectURL(etiquetaUrl);
-      }
-    };
-  }, [etiquetaUrl]);
+  const isPageSelected =
+    lotes.length > 0 && lotes.every((l) => selectedBatchIds.includes(l.id));
 
-  const selectedLote = lotes.find((l) => l.id.toString() === selectedLoteId);
+  const handleGerarPdfEmMassa = async () => {
+    if (selectedBatchIds.length === 0) {
+      toast.warning("Selecione pelo menos um lote.");
+      return;
+    }
+
+    try {
+      setGeneratingPdf(true);
+      toast.info(
+        "Gerando PDF com " + selectedBatchIds.length + " etiquetas..."
+      );
+      await etiquetaService.imprimirLotePDF(selectedBatchIds);
+      toast.success("PDF gerado e baixado com sucesso!");
+      setSelectedBatchIds([]);
+    } catch (error) {
+      console.error("Erro ao gerar PDF", error);
+      toast.error("Erro ao gerar arquivo PDF.");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -118,149 +126,178 @@ export function EtiquetasPage() {
           <SiteHeader />
           <main className="flex-1 overflow-y-auto p-6">
             <div className="mb-6">
-              <h1 className="text-3xl font-bold">Etiquetas</h1>
+              <h1 className="text-3xl font-bold">Impressão em Massa</h1>
               <p className="text-muted-foreground">
-                Visualize e imprima etiquetas com código de barras
+                Selecione múltiplos lotes para gerar uma única folha A4 com
+                todas as etiquetas.
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Selecionar Lote</CardTitle>
-                  <CardDescription>Escolha um lote para visualizar sua etiqueta</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="lote">Lote</Label>
-                      {loading ? (
-                        <div>Carregando...</div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex gap-4 items-center w-full md:w-auto">
+                    {/* Busca */}
+                    <div className="relative w-full md:w-[300px]">
+                      <IconSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="search"
+                        placeholder="Buscar por produto ou código..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      {selectedBatchIds.length} selecionados
+                    </div>
+                    <Button
+                      onClick={handleGerarPdfEmMassa}
+                      disabled={selectedBatchIds.length === 0 || generatingPdf}
+                      className="bg-purple-600 hover:bg-purple-700 text-white min-w-[140px]"
+                    >
+                      {generatingPdf ? (
+                        <>
+                          <IconLoader className="animate-spin mr-2 h-4 w-4" />
+                          Gerando...
+                        </>
                       ) : (
-                        <Select value={selectedLoteId} onValueChange={handleLoteSelect}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione um lote" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {lotes.map((lote) => (
-                              <SelectItem key={lote.id} value={lote.id.toString()}>
-                                Lote #{lote.id} - {lote.itens?.length > 0 ? (lote.itens.length === 1 ? lote.itens[0].produtoNome : `${lote.itens.length} produtos`) : 'Sem produtos'} - {lote.codigoBarras || 'Sem código'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <>
+                          <IconFileTypePdf className="mr-2 h-4 w-4" />
+                          Gerar PDF
+                        </>
                       )}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Carregando lotes...
+                  </div>
+                ) : (
+                  <>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[50px] text-center">
+                              <Checkbox
+                                checked={isPageSelected}
+                                onCheckedChange={(checked) =>
+                                  toggleSelectAll(checked as boolean)
+                                }
+                              />
+                            </TableHead>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Produto Principal</TableHead>
+                            <TableHead>Qtd. Atual</TableHead>
+                            <TableHead>Data Entrada</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {lotes.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={5}
+                                className="text-center h-24 text-muted-foreground"
+                              >
+                                Nenhum lote encontrado.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            lotes.map((lote) => (
+                              <TableRow
+                                key={lote.id}
+                                className="hover:bg-muted/50 cursor-pointer"
+                                onClick={() =>
+                                  toggleSelectLote(
+                                    lote.id,
+                                    !selectedBatchIds.includes(lote.id)
+                                  )
+                                }
+                              >
+                                <TableCell
+                                  className="text-center"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Checkbox
+                                    checked={selectedBatchIds.includes(lote.id)}
+                                    onCheckedChange={(checked) =>
+                                      toggleSelectLote(
+                                        lote.id,
+                                        checked as boolean
+                                      )
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell className="font-mono font-medium">
+                                  #{lote.id}
+                                </TableCell>
+                                <TableCell>
+                                  {lote.itens?.[0]?.produtoNome ||
+                                    "Sem produto"}
+                                  {lote.itens && lote.itens.length > 1 && (
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                      (+{lote.itens.length - 1} outros)
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {lote.quantidadeAtual}{" "}
+                                  {lote.unidadeMedida?.toLowerCase()}
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(
+                                    lote.dataEntrada
+                                  ).toLocaleDateString("pt-BR")}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
 
-                    {selectedLote && (
-                      <div className="space-y-4">
-                        <div className="rounded-md border p-4">
-                          <h3 className="mb-2 font-semibold">Informações do Lote</h3>
-                          <div className="grid gap-1 text-sm">
-                            <div>
-                              <span className="font-medium">Lote:</span> #{selectedLote.id}
-                            </div>
-                            <div>
-                              <span className="font-medium">Produtos:</span>{' '}
-                              {selectedLote.itens?.length > 0 ? (
-                                <div className="mt-1 space-y-1">
-                                  {selectedLote.itens.map((item, idx) => (
-                                    <div key={idx} className="text-xs">
-                                      • {item.produtoNome} ({item.quantidade} {selectedLote.unidadeMedida?.toLowerCase()})
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : 'Sem produtos'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Código de Barras:</span>{' '}
-                              {selectedLote.codigoBarras || '-'}
-                            </div>
-                            <div>
-                              <span className="font-medium">Quantidade Total:</span>{' '}
-                              {selectedLote.quantidadeAtual} {selectedLote.unidadeMedida?.toLowerCase()}
-                            </div>
-                            <div>
-                              <span className="font-medium">Data de Entrada:</span>{' '}
-                              {new Date(selectedLote.dataEntrada).toLocaleDateString('pt-BR')}
-                            </div>
-                            {selectedLote.observacoes && (
-                              <div>
-                                <span className="font-medium">Observações:</span>{' '}
-                                {selectedLote.observacoes}
-                              </div>
-                            )}
-                          </div>
+                    {lotes.length > 0 && (
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="text-sm text-muted-foreground">
+                          Página <strong>{page + 1}</strong> de{" "}
+                          <strong>{totalPages}</strong>.
                         </div>
-
-                        <div className="grid gap-2">
-                          <Label htmlFor="tamanho">Tamanho da Etiqueta</Label>
-                          <Select value={tamanhoEtiqueta} onValueChange={handleTamanhoChange}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tamanho" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="PEQUENO">
-                                Pequeno (6cm x 4cm)
-                              </SelectItem>
-                              <SelectItem value="MEDIO">
-                                Médio (10cm x 5cm)
-                              </SelectItem>
-                              <SelectItem value="GRANDE">
-                                Grande (12cm x 8cm)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage((p) => Math.max(0, p - 1))}
+                            disabled={page === 0}
+                          >
+                            <IconChevronLeft className="h-4 w-4 mr-2" />
+                            Anterior
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setPage((p) => Math.min(totalPages - 1, p + 1))
+                            }
+                            disabled={page >= totalPages - 1}
+                          >
+                            Próximo
+                            <IconChevronRight className="h-4 w-4 ml-2" />
+                          </Button>
                         </div>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Visualização da Etiqueta</CardTitle>
-                  <CardDescription>
-                    A etiqueta será exibida aqui quando você selecionar um lote
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loadingEtiqueta ? (
-                    <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed">
-                      <p className="text-muted-foreground">Carregando etiqueta...</p>
-                    </div>
-                  ) : errorEtiqueta ? (
-                    <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed">
-                      <p className="text-destructive">{errorEtiqueta}</p>
-                    </div>
-                  ) : etiquetaUrl ? (
-                    <div className="space-y-4">
-                      <div
-                        ref={printRef}
-                        className="flex items-center justify-center rounded-md border bg-white p-4"
-                      >
-                        <img
-                          src={etiquetaUrl}
-                          alt="Etiqueta do Lote"
-                          className="max-w-full"
-                        />
-                      </div>
-                      <Button variant="outline" onClick={handlePrint} className="w-full">
-                        <IconPrinter className="mr-2 h-4 w-4" />
-                        Imprimir Etiqueta
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed">
-                      <p className="text-muted-foreground">
-                        Selecione um lote para visualizar sua etiqueta
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </main>
         </div>
       </div>

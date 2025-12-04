@@ -2,7 +2,6 @@ package com.ong.backend.dto.lote;
 
 import com.ong.backend.models.Lote;
 
-import java.time.LocalDate;
 import java.util.stream.Collectors;
 
 public record LoteSimplesDTO(

@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/etiquetas")
 @RequiredArgsConstructor
@@ -15,22 +17,25 @@ public class EtiquetaController {
 
     private final EtiquetaService etiquetaService;
 
-    @GetMapping("/lote/{loteId}")
-    public ResponseEntity<byte[]> gerarEtiqueta(
-            @PathVariable Long loteId,
-            @RequestParam(required = false, defaultValue = "MEDIO") String tamanho
-    ) {
+    @PostMapping("/imprimir-lote")
+    public ResponseEntity<byte[]> imprimirEtiquetasEmLote(@RequestBody List<Long> loteIds) {
         try {
-            byte[] etiqueta = etiquetaService.gerarEtiqueta(loteId, tamanho);
-            
+            byte[] pdf = etiquetaService.gerarEtiquetasEmLotePDF(loteIds);
+
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.IMAGE_PNG);
-            headers.setContentDispositionFormData("attachment", "etiqueta-lote-" + loteId + ".png");
-            
-            return new ResponseEntity<>(etiqueta, headers, HttpStatus.OK);
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("inline", "etiquetas-lote.pdf");
+
+            return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @GetMapping("/lote/{loteId}")
+    public ResponseEntity<byte[]> gerarEtiqueta(@PathVariable Long loteId,
+            @RequestParam(required = false) String tamanho) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 }

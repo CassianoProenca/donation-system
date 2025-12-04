@@ -1,29 +1,29 @@
 /**
  * Sistema de Gestão de Doações
  * Copyright (c) 2025 Cassiano Melo
- * 
+ *
  * Este projeto é software livre: você pode redistribuí-lo e/ou modificá-lo
  * sob os termos da Licença MIT conforme publicada pela Open Source Initiative.
- * 
+ *
  * GitHub: https://github.com/Cassiano-DEV999/donation-system
  * Autor: Cassiano Melo <cassianomeloprofissional@gmail.com>
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import { AuthProvider } from "@/contexts/AuthContext"
-import { ThemeProvider } from "@/components/theme-provider"
-import { ProtectedRoute } from "@/components/ProtectedRoute"
-import { AdminRoute } from "@/components/AdminRoute"
-import LoginPage from "@/pages/LoginPage"
-import SignupPage from "@/pages/SignupPage"
-import DashboardPageNew from "@/pages/DashboardPageNew"
-import { CategoriasPage } from "@/pages/CategoriasPage"
-import { ProdutosPage } from "@/pages/ProdutosPage"
-import { LotesPage } from "@/pages/LotesPage"
-import { MovimentacoesPage } from "@/pages/MovimentacoesPage"
-import { EtiquetasPage } from "@/pages/EtiquetasPage"
-import { UsuariosPage } from "@/pages/UsuariosPage"
-import { PerfilPage } from "@/pages/PerfilPage"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
+import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
+import DashboardPage from "@/pages/DashboardPageNew";
+import { CategoriasPage } from "@/pages/CategoriasPage";
+import { ProdutosPage } from "@/pages/ProdutosPage";
+import { LotesPage } from "@/pages/LotesPage";
+import { MovimentacoesPage } from "@/pages/MovimentacoesPage";
+import { EtiquetasPage } from "@/pages/EtiquetasPage";
+import { UsuariosPage } from "@/pages/UsuariosPage";
+import { PerfilPage } from "@/pages/PerfilPage";
 
 function App() {
   return (
@@ -37,7 +37,7 @@ function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <DashboardPageNew />
+                  <DashboardPage />
                 </ProtectedRoute>
               }
             />
@@ -102,7 +102,7 @@ function App() {
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
-  )
+  );
 }
 
-export default App
+export default App;

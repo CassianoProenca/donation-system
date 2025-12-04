@@ -7,11 +7,16 @@ import com.ong.backend.dto.produto.ProdutoDetalhesDTO;
 import com.ong.backend.exceptions.ResourceNotFoundException;
 import com.ong.backend.models.Categoria;
 import com.ong.backend.models.Produto;
+import com.ong.backend.models.ComposicaoProduto;
 import com.ong.backend.repositories.LoteRepository;
 import com.ong.backend.repositories.ProdutoRepository;
+import com.ong.backend.repositories.ComposicaoProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.ong.backend.specifications.ProdutoSpecs;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,13 +28,12 @@ public class ProdutoService {
     private final ProdutoRepository produtoRepository;
     private final LoteRepository loteRepository;
     private final CategoriaService categoriaService;
+    private final ComposicaoProdutoRepository composicaoProdutoRepository;
 
     @Transactional(readOnly = true)
-    public List<ProdutoResponseDTO> listarTodos() {
-        return produtoRepository.findAll()
-                .stream()
-                .map(ProdutoResponseDTO::new)
-                .toList();
+    public Page<ProdutoResponseDTO> listarComFiltros(String nome, Long categoriaId, Pageable pageable) {
+        return produtoRepository.findAll(ProdutoSpecs.comFiltros(nome, categoriaId), pageable)
+                .map(ProdutoResponseDTO::new);
     }
 
     @Transactional(readOnly = true)
@@ -41,6 +45,14 @@ public class ProdutoService {
                 .filter(p -> categoriaId == null || p.getCategoria().getId().equals(categoriaId))
                 .map(ProdutoResponseDTO::new)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProdutoResponseDTO> listarTodos() { 
+         return produtoRepository.findAll()
+                 .stream()
+                 .map(ProdutoResponseDTO::new)
+                 .toList();
     }
 
     @Transactional(readOnly = true)
@@ -63,7 +75,6 @@ public class ProdutoService {
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Produto", "id", id));
 
-        // Buscar total em estoque somando quantidades nos itens de lotes
         Integer totalEmEstoque = loteRepository.findAll()
                 .stream()
                 .flatMap(lote -> lote.getItens().stream())
@@ -99,8 +110,25 @@ public class ProdutoService {
         produto.setDescricao(dto.descricao());
         produto.setCodigoBarrasFabricante(dto.codigoBarrasFabricante());
         produto.setCategoria(categoria);
+        
+        produto.setKit(dto.isKit() != null && dto.isKit());
 
         produto = produtoRepository.save(produto);
+
+        if (produto.isKit() && dto.componentes() != null && !dto.componentes().isEmpty()) {
+            for (var compDto : dto.componentes()) {
+                Produto componente = buscarEntidadePorId(compDto.produtoId());
+                
+                ComposicaoProduto composicao = new ComposicaoProduto();
+                composicao.setProdutoPai(produto);
+                composicao.setComponente(componente);
+                composicao.setQuantidade(compDto.quantidade());
+                
+                composicaoProdutoRepository.save(composicao);
+                produto.getComponentes().add(composicao);
+            }
+        }
+
         return new ProdutoResponseDTO(produto);
     }
 

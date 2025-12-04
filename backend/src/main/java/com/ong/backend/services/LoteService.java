@@ -7,22 +7,29 @@ import com.ong.backend.dto.lote.LoteDetalhesDTO;
 import com.ong.backend.exceptions.BusinessException;
 import com.ong.backend.exceptions.ResourceNotFoundException;
 import com.ong.backend.models.Lote;
+import com.ong.backend.models.LoteItem;
 import com.ong.backend.models.Produto;
 import com.ong.backend.repositories.LoteRepository;
+import com.ong.backend.repositories.LoteItemRepository;
 import com.ong.backend.repositories.MovimentacaoRepository;
+import com.ong.backend.specifications.LoteSpecs;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class LoteService {
 
     private final LoteRepository loteRepository;
+    private final LoteItemRepository loteItemRepository;
     private final MovimentacaoRepository movimentacaoRepository;
     private final ProdutoService produtoService;
     private final UsuarioService usuarioService;
@@ -36,16 +43,27 @@ public class LoteService {
     }
 
     @Transactional(readOnly = true)
-    public List<LoteResponseDTO> listarComFiltros(Long produtoId, String dataEntradaInicio, String dataEntradaFim, Boolean comEstoque) {
-        List<Lote> lotes = loteRepository.findAll();
-        
-        return lotes.stream()
-                .filter(l -> produtoId == null || l.getItens().stream().anyMatch(item -> item.getProduto().getId().equals(produtoId)))
-                .filter(l -> dataEntradaInicio == null || dataEntradaInicio.trim().isEmpty() || !l.getDataEntrada().isBefore(LocalDate.parse(dataEntradaInicio)))
-                .filter(l -> dataEntradaFim == null || dataEntradaFim.trim().isEmpty() || !l.getDataEntrada().isAfter(LocalDate.parse(dataEntradaFim)))
-                .filter(l -> comEstoque == null || !comEstoque || l.getQuantidadeAtual() > 0)
-                .map(LoteResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<LoteResponseDTO> listarComFiltros(
+            Long produtoId,
+            String dataEntradaInicio,
+            String dataEntradaFim,
+            Boolean comEstoque,
+            String busca,
+            Pageable pageable) {
+
+        LocalDate inicio = (dataEntradaInicio != null && !dataEntradaInicio.isEmpty())
+                ? LocalDate.parse(dataEntradaInicio)
+                : null;
+        LocalDate fim = (dataEntradaFim != null && !dataEntradaFim.isEmpty()) ? LocalDate.parse(dataEntradaFim) : null;
+
+        return loteRepository.findAll(
+                LoteSpecs.comFiltros(produtoId, inicio, fim, comEstoque, busca),
+                pageable).map(LoteResponseDTO::new);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LoteResponseDTO> listarTodosSemPaginacao() {
+        return loteRepository.findAll().stream().map(LoteResponseDTO::new).toList();
     }
 
     @Transactional(readOnly = true)
@@ -89,8 +107,8 @@ public class LoteService {
                 .stream()
                 .filter(lote -> lote.getQuantidadeAtual() > 0)
                 .filter(lote -> lote.getItens().stream()
-                        .anyMatch(item -> item.getDataValidade() != null && 
-                                         item.getDataValidade().isBefore(dataLimite)))
+                        .anyMatch(item -> item.getDataValidade() != null &&
+                                item.getDataValidade().isBefore(dataLimite)))
                 .map(LoteSimplesDTO::new)
                 .toList();
     }
@@ -105,7 +123,6 @@ public class LoteService {
 
     @Transactional
     public LoteResponseDTO criar(LoteRequestDTO dto, String emailUsuarioAutenticado) {
-        // Calcular quantidade total
         int quantidadeTotal = dto.itens().stream()
                 .mapToInt(item -> item.quantidade())
                 .sum();
@@ -114,7 +131,6 @@ public class LoteService {
             throw new BusinessException("Quantidade total deve ser maior que zero");
         }
 
-        // Criar lote
         Lote lote = new Lote();
         lote.setQuantidadeInicial(quantidadeTotal);
         lote.setQuantidadeAtual(quantidadeTotal);
@@ -122,14 +138,12 @@ public class LoteService {
         lote.setUnidadeMedida(dto.unidadeMedida());
         lote.setObservacoes(dto.observacoes());
 
-        // Salvar lote primeiro para gerar ID
         lote = loteRepository.save(lote);
 
-        // Criar itens do lote
         Lote finalLote = lote;
         dto.itens().forEach(itemDto -> {
             Produto produto = produtoService.buscarEntidadePorId(itemDto.produtoId());
-            
+
             com.ong.backend.models.LoteItem item = new com.ong.backend.models.LoteItem();
             item.setLote(finalLote);
             item.setProduto(produto);
@@ -137,13 +151,12 @@ public class LoteService {
             item.setDataValidade(itemDto.dataValidade());
             item.setTamanho(itemDto.tamanho());
             item.setVoltagem(itemDto.voltagem());
-            
+
             finalLote.getItens().add(item);
         });
 
         lote = loteRepository.save(lote);
 
-        // Auto-criar movimentação de ENTRADA
         criarMovimentacaoEntrada(lote, emailUsuarioAutenticado);
 
         return new LoteResponseDTO(lote);
@@ -151,14 +164,14 @@ public class LoteService {
 
     private void criarMovimentacaoEntrada(Lote lote, String emailUsuarioAutenticado) {
         com.ong.backend.models.Usuario usuario = usuarioService.buscarEntidadePorEmail(emailUsuarioAutenticado);
-        
+
         com.ong.backend.models.Movimentacao movimentacao = new com.ong.backend.models.Movimentacao();
         movimentacao.setLote(lote);
         movimentacao.setUsuario(usuario);
         movimentacao.setTipo(com.ong.backend.models.TipoMovimentacao.ENTRADA);
         movimentacao.setQuantidade(lote.getQuantidadeInicial());
         movimentacao.setDataHora(java.time.LocalDateTime.now());
-        
+
         movimentacaoRepository.save(movimentacao);
     }
 
@@ -167,12 +180,10 @@ public class LoteService {
         Lote lote = loteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lote", "id", id));
 
-        // Não permitir atualizar se houver movimentações
         if (!movimentacaoRepository.findByLoteId(id).isEmpty()) {
             throw new BusinessException("Não é possível atualizar lote com movimentações. Crie um novo lote.");
         }
 
-        // Calcular nova quantidade total
         int quantidadeTotal = dto.itens().stream()
                 .mapToInt(item -> item.quantidade())
                 .sum();
@@ -183,13 +194,12 @@ public class LoteService {
         lote.setUnidadeMedida(dto.unidadeMedida());
         lote.setObservacoes(dto.observacoes());
 
-        // Limpar itens antigos e adicionar novos
         lote.getItens().clear();
-        
+
         final Lote finalLote = lote;
         dto.itens().forEach(itemDto -> {
             Produto produto = produtoService.buscarEntidadePorId(itemDto.produtoId());
-            
+
             com.ong.backend.models.LoteItem item = new com.ong.backend.models.LoteItem();
             item.setLote(finalLote);
             item.setProduto(produto);
@@ -197,7 +207,7 @@ public class LoteService {
             item.setDataValidade(itemDto.dataValidade());
             item.setTamanho(itemDto.tamanho());
             item.setVoltagem(itemDto.voltagem());
-            
+
             finalLote.getItens().add(item);
         });
 
@@ -236,5 +246,46 @@ public class LoteService {
     public Lote buscarEntidadePorId(Long id) {
         return loteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Lote", "id", id));
+    }
+
+    @Transactional
+    public void consumirEstoquePorProduto(Long produtoId, int quantidadeNecessaria) {
+        List<Lote> lotesComProduto = loteRepository.findAll().stream()
+                .filter(l -> l.getItens().stream()
+                        .anyMatch(i -> i.getProduto().getId().equals(produtoId) && i.getQuantidade() > 0))
+                .sorted((l1, l2) -> l1.getDataEntrada().compareTo(l2.getDataEntrada()))
+                .toList();
+
+        int qtdRestanteParaBaixar = quantidadeNecessaria;
+
+        for (Lote lote : lotesComProduto) {
+            if (qtdRestanteParaBaixar <= 0)
+                break;
+
+            LoteItem item = lote.getItens().stream()
+                    .filter(i -> i.getProduto().getId().equals(produtoId))
+                    .findFirst()
+                    .orElseThrow();
+
+            int disponivelNoLote = item.getQuantidade();
+
+            if (disponivelNoLote >= qtdRestanteParaBaixar) {
+                item.setQuantidade(disponivelNoLote - qtdRestanteParaBaixar);
+                lote.setQuantidadeAtual(lote.getQuantidadeAtual() - qtdRestanteParaBaixar);
+                qtdRestanteParaBaixar = 0;
+            } else {
+                item.setQuantidade(0);
+                lote.setQuantidadeAtual(lote.getQuantidadeAtual() - disponivelNoLote);
+                qtdRestanteParaBaixar -= disponivelNoLote;
+            }
+
+            loteItemRepository.save(item);
+            loteRepository.save(lote);
+        }
+
+        if (qtdRestanteParaBaixar > 0) {
+            throw new BusinessException(
+                    "Estoque insuficiente para o produto ID: " + produtoId + ". Faltam: " + qtdRestanteParaBaixar);
+        }
     }
 }

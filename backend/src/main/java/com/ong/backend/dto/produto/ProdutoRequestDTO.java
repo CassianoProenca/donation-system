@@ -1,8 +1,10 @@
 package com.ong.backend.dto.produto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 public record ProdutoRequestDTO(
     
@@ -17,5 +19,10 @@ public record ProdutoRequestDTO(
     String codigoBarrasFabricante,
     
     @NotNull(message = "Categoria é obrigatória")
-    Long categoriaId
+    Long categoriaId,
+
+    Boolean isKit,
+
+    @Valid
+    List<ComponenteRequestDTO> componentes
 ) {}
