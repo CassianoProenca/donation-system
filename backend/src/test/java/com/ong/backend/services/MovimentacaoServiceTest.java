@@ -117,7 +117,6 @@ class MovimentacaoServiceTest {
 
     // Then
     assertNotNull(resultado);
-    // Verifica que o delta foi negativo
     verify(loteService, times(1)).atualizarQuantidade(1L, -30);
   }
 
@@ -178,23 +177,20 @@ class MovimentacaoServiceTest {
     MontagemKitRequestDTO dto = new MontagemKitRequestDTO(10L, 5);
 
     when(produtoService.buscarEntidadePorId(10L)).thenReturn(kit);
-    doNothing().when(loteService).consumirEstoquePorProduto(1L, 10); // 2 * 5
-    doNothing().when(loteService).consumirEstoquePorProduto(2L, 5); // 1 * 5
-    
-    // Mock do LoteResponseDTO retornado pela criação do lote
+    doNothing().when(loteService).consumirEstoquePorProduto(1L, 10);
+    doNothing().when(loteService).consumirEstoquePorProduto(2L, 5);
+
     com.ong.backend.dto.lote.LoteResponseDTO loteResponse = new com.ong.backend.dto.lote.LoteResponseDTO(
-        100L, // id
-        new ArrayList<>(), // itens
-        5, // quantidadeInicial
-        5, // quantidadeAtual
-        java.time.LocalDate.now(), // dataEntrada
-        com.ong.backend.models.UnidadeMedida.UNIDADE, // unidadeMedida
-        "Montagem automática de Kit: Kit Alimentação", // observacoes
-        "2100000000010" // codigoBarras
-    );
+        100L,
+        new ArrayList<>(),
+        5,
+        5,
+        java.time.LocalDate.now(),
+        com.ong.backend.models.UnidadeMedida.UNIDADE,
+        "Montagem automática de Kit: Kit Alimentação",
+        "2100000000010");
     when(loteService.criar(any(), anyString())).thenReturn(loteResponse);
-    
-    // Mock da movimentação retornada pela busca
+
     Movimentacao movimentacaoKit = new Movimentacao();
     movimentacaoKit.setId(200L);
     movimentacaoKit.setLote(lote);
@@ -202,7 +198,7 @@ class MovimentacaoServiceTest {
     movimentacaoKit.setTipo(TipoMovimentacao.ENTRADA);
     movimentacaoKit.setQuantidade(5);
     movimentacaoKit.setDataHora(LocalDateTime.now());
-    
+
     when(movimentacaoRepository.findByLoteIdOrderByDataHoraDesc(100L))
         .thenReturn(Arrays.asList(movimentacaoKit));
     when(movimentacaoRepository.findById(200L))
@@ -213,7 +209,6 @@ class MovimentacaoServiceTest {
 
     // Then
     assertNotNull(resultado);
-    // Verifica que consumiu estoque de ambos os componentes
     verify(loteService, times(1)).consumirEstoquePorProduto(1L, 10);
     verify(loteService, times(1)).consumirEstoquePorProduto(2L, 5);
   }

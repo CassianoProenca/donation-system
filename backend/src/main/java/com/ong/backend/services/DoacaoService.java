@@ -23,34 +23,29 @@ public class DoacaoService {
         List<LoteResponseDTO> lotesCriados = new ArrayList<>();
 
         for (var item : dto.itens()) {
-            
             LoteItemRequestDTO itemRequest = new LoteItemRequestDTO(
-                item.produtoId(),
-                item.quantidade(),
-                item.validade(),
-                item.tamanho(),
-                item.voltagem()
-            );
+                    item.produtoId(),
+                    item.quantidade(),
+                    item.validade(),
+                    item.tamanho(),
+                    item.voltagem());
 
-            String obsFinal = (dto.observacoesGerais() != null && !dto.observacoesGerais().isBlank() 
-                    ? dto.observacoesGerais() 
+            String obsFinal = (dto.observacoesGerais() != null && !dto.observacoesGerais().isBlank()
+                    ? dto.observacoesGerais()
                     : "Entrada Rápida");
-            
+
             if (item.observacoesItem() != null && !item.observacoesItem().isBlank()) {
                 obsFinal += " | Detalhe: " + item.observacoesItem();
             }
 
             UnidadeMedida unidade = item.unidadeMedida() != null ? item.unidadeMedida() : UnidadeMedida.UNIDADE;
 
-            
             LoteRequestDTO loteIndividual = new LoteRequestDTO(
-                List.of(itemRequest),
-                dto.dataEntrada(),
-                unidade,
-                obsFinal
-            );
+                    List.of(itemRequest),
+                    dto.dataEntrada(),
+                    unidade,
+                    obsFinal);
 
-            
             LoteResponseDTO loteCriado = loteService.criar(loteIndividual, usuarioEmail);
             lotesCriados.add(loteCriado);
         }

@@ -202,9 +202,9 @@ public class MovimentacaoService {
         LoteItemRequestDTO itemKit = new LoteItemRequestDTO(
                 kit.getId(),
                 dto.quantidade(),
-                null, // validade
-                null, // tamanho
-                null // voltagem
+                null,
+                null,
+                null
         );
 
         LoteRequestDTO novoLoteDto = new LoteRequestDTO(

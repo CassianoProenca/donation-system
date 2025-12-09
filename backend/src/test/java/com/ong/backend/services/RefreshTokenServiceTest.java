@@ -29,7 +29,6 @@ class RefreshTokenServiceTest {
 
   @BeforeEach
   void setUpService() {
-    // Injeta o valor de refreshTokenExpiration para os testes
     ReflectionTestUtils.setField(refreshTokenService, "refreshTokenExpiration", 604800000L);
   }
 
