@@ -8,7 +8,12 @@ import java.time.LocalDateTime;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "movimentacoes")
+@Table(name = "movimentacoes", indexes = {
+        @Index(name = "idx_movimentacao_lote", columnList = "lote_id"),
+        @Index(name = "idx_movimentacao_usuario", columnList = "usuario_id"),
+        @Index(name = "idx_movimentacao_data_hora", columnList = "data_hora"),
+        @Index(name = "idx_movimentacao_tipo", columnList = "tipo")
+})
 public class Movimentacao {
 
     @Id
@@ -28,6 +33,7 @@ public class Movimentacao {
     private TipoMovimentacao tipo;
 
     @Column(nullable = false)
+    @jakarta.validation.constraints.Min(value = 1, message = "Quantidade deve ser maior que zero")
     private Integer quantidade;
 
     @Column(nullable = false)

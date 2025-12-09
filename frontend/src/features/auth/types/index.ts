@@ -14,7 +14,12 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  accessToken: string;
+  refreshToken?: string; // Não usado no frontend (vem via cookie)
+  usuarioId: number;
+  nome: string;
+  email: string;
+  perfil: PerfilUsuario;
 }
 
 export interface RegisterRequest {
@@ -38,7 +43,7 @@ export interface AuthContextType {
     senha: string,
     perfil: PerfilUsuario
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
 }

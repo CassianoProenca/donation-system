@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth";
@@ -9,37 +10,37 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { loginSchema, type LoginFormData } from "@/features/auth/schemas/loginSchema";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(email, senha);
+      await login(data.email, data.senha);
       navigate("/dashboard");
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.message ||
         "Erro ao fazer login. Verifique suas credenciais.";
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+      toast.error(errorMessage);
     }
   };
 
@@ -47,7 +48,7 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden border-2 shadow-2xl p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
+          <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
                 <div className="mb-2">
@@ -74,41 +75,34 @@ export function LoginForm({
                   Acesse o Sistema de Gestão de Doações
                 </p>
               </div>
-              {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                  {error}
-                </div>
-              )}
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
+                  {...register("email")}
+                  disabled={isSubmitting}
                 />
+                <FieldError errors={errors.email ? [errors.email] : undefined} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="password">Senha</FieldLabel>
                 <Input
                   id="password"
                   type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  required
-                  disabled={isLoading}
+                  {...register("senha")}
+                  disabled={isSubmitting}
                 />
+                <FieldError errors={errors.senha ? [errors.senha] : undefined} />
               </Field>
               <Field>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
                 >
-                  {isLoading ? "Entrando..." : "Entrar"}
+                  {isSubmitting ? "Entrando..." : "Entrar"}
                 </Button>
               </Field>
               <FieldDescription className="text-center">

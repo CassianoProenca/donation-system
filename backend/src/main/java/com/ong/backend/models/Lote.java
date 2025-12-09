@@ -10,7 +10,10 @@ import java.util.List;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "lotes")
+@Table(name = "lotes", indexes = {
+        @Index(name = "idx_lote_data_entrada", columnList = "data_entrada"),
+        @Index(name = "idx_lote_quantidade_atual", columnList = "quantidade_atual")
+})
 public class Lote {
 
     @Id
@@ -21,9 +24,11 @@ public class Lote {
     private List<LoteItem> itens = new ArrayList<>();
 
     @Column(nullable = false)
+    @jakarta.validation.constraints.Min(value = 0, message = "Quantidade inicial deve ser maior ou igual a zero")
     private Integer quantidadeInicial;
 
     @Column(nullable = false)
+    @jakarta.validation.constraints.Min(value = 0, message = "Quantidade atual deve ser maior ou igual a zero")
     private Integer quantidadeAtual;
 
     @Column(nullable = false)
@@ -37,11 +42,12 @@ public class Lote {
 
     @Transient
     public String getCodigoBarras() {
-        if (this.id == null) return null;
+        if (this.id == null)
+            return null;
         String prefixo = "2";
         String corpo = String.format("%011d", this.id);
         String codigoSemDigito = prefixo + corpo;
-        
+
         int digito = calcularDigitoVerificador(codigoSemDigito);
         return codigoSemDigito + digito;
     }

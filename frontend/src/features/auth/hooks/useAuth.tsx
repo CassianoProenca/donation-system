@@ -1,11 +1,9 @@
-
-
 import { useState, useEffect, ReactNode } from "react";
 import { toast } from "sonner";
 import type { User } from "../types";
-import { useLoginMutation, useRegisterMutation } from "../api";
+import { useLoginMutation, useRegisterMutation, useLogoutMutation, useRefreshTokenMutation } from "../api";
 import { AuthContext } from "./authContext";
-
+import { tokenManager } from "@/shared/api/tokenManager";
 
 function decodeToken(token: string): User | null {
   try {
@@ -13,7 +11,7 @@ function decodeToken(token: string): User | null {
     const decoded = JSON.parse(atob(payload));
 
     return {
-      id: decoded.id,
+      id: decoded.userId || decoded.id,
       nome: decoded.nome,
       email: decoded.sub,
       perfil: decoded.perfil,
@@ -31,42 +29,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useLoginMutation();
   const registerMutation = useRegisterMutation();
+  const logoutMutation = useLogoutMutation();
+  const refreshMutation = useRefreshTokenMutation();
 
-  // Carrega token do localStorage na inicialização
   useEffect(() => {
-    const initAuth = () => {
-      const storedToken = localStorage.getItem("token");
-
-      if (storedToken) {
-        try {
-          const decodedUser = decodeToken(storedToken);
-          if (decodedUser) {
-            setToken(storedToken);
-            setUser(decodedUser);
-          } else {
-            localStorage.removeItem("token");
-          }
-        } catch (error) {
-          console.error("Erro ao processar token:", error);
-          localStorage.removeItem("token");
+    const initAuth = async () => {
+      try {
+        const response = await refreshMutation.mutateAsync();
+        const { accessToken } = response;
+        
+        const decodedUser = decodeToken(accessToken);
+        if (decodedUser) {
+          setToken(accessToken);
+          setUser(decodedUser);
+          tokenManager.setToken(accessToken);
         }
+      } catch (error) {
+        tokenManager.clearToken();
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, senha: string) => {
     try {
       const response = await loginMutation.mutateAsync({ email, senha });
-      const { token: newToken } = response;
+      const { accessToken } = response;
 
-      const decodedUser = decodeToken(newToken);
+      const decodedUser = decodeToken(accessToken);
       if (decodedUser) {
-        setToken(newToken);
+        setToken(accessToken);
         setUser(decodedUser);
-        localStorage.setItem("token", newToken);
+        tokenManager.setToken(accessToken);
         toast.success("Login realizado com sucesso!");
       }
     } catch (error) {
@@ -93,11 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem("token");
-    toast.info("Você saiu da aplicação");
+  const logout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    } finally {
+      setToken(null);
+      setUser(null);
+      tokenManager.clearToken();
+      toast.info("Você saiu da aplicação");
+    }
   };
 
   return (

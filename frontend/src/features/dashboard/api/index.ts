@@ -1,1 +1,2 @@
-export * from "./useDashboardStats";
+export * from "./useDashboardMetrics";
+export * from "./dashboardService";

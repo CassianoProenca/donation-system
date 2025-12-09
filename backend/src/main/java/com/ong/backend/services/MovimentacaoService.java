@@ -19,6 +19,7 @@ import com.ong.backend.repositories.MovimentacaoRepository;
 import com.ong.backend.specifications.MovimentacaoSpecs;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MovimentacaoService {
 
     private final MovimentacaoRepository movimentacaoRepository;
@@ -125,6 +127,9 @@ public class MovimentacaoService {
 
     @Transactional
     public MovimentacaoResponseDTO criar(MovimentacaoRequestDTO dto, String emailUsuarioAutenticado) {
+        log.info("Criando movimentação: tipo={}, loteId={}, quantidade={}",
+                dto.tipo(), dto.loteId(), dto.quantidade());
+
         Lote lote = loteService.buscarEntidadePorId(dto.loteId());
 
         Usuario usuario;
@@ -146,6 +151,7 @@ public class MovimentacaoService {
         movimentacao.setDataHora(LocalDateTime.now());
 
         movimentacao = movimentacaoRepository.save(movimentacao);
+        log.info("Movimentação criada com sucesso. ID: {}", movimentacao.getId());
         return new MovimentacaoResponseDTO(movimentacao);
     }
 
@@ -171,19 +177,26 @@ public class MovimentacaoService {
 
     @Transactional
     public MovimentacaoResponseDTO montarKit(MontagemKitRequestDTO dto, String emailUsuario) {
+        log.info("Montando kit: produtoId={}, quantidade={}, usuario={}",
+                dto.produtoKitId(), dto.quantidade(), emailUsuario);
+
         Produto kit = produtoService.buscarEntidadePorId(dto.produtoKitId());
 
         if (!kit.isKit()) {
+            log.warn("Tentativa de montar kit com produto que não é kit. ProdutoId: {}", dto.produtoKitId());
             throw new BusinessException("O produto informado não é um Kit (item composto).");
         }
 
         if (kit.getComponentes().isEmpty()) {
+            log.warn("Tentativa de montar kit sem componentes. ProdutoId: {}", dto.produtoKitId());
             throw new BusinessException("Este kit não possui componentes definidos na sua 'receita'.");
         }
 
+        log.debug("Consumindo estoque de {} componentes para montar kit", kit.getComponentes().size());
         for (ComposicaoProduto itemReceita : kit.getComponentes()) {
             int qtdTotalNecessaria = itemReceita.getQuantidade() * dto.quantidade();
-
+            log.debug("Consumindo {} unidades do componente {}", qtdTotalNecessaria,
+                    itemReceita.getComponente().getId());
             loteService.consumirEstoquePorProduto(itemReceita.getComponente().getId(), qtdTotalNecessaria);
         }
         LoteItemRequestDTO itemKit = new LoteItemRequestDTO(

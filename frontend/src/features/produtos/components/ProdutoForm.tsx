@@ -74,7 +74,6 @@ export function ProdutoForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validações
     if (!formData.nome.trim()) {
       return;
     }
@@ -90,7 +89,6 @@ export function ProdutoForm({
       isKit: formData.isKit,
     };
 
-    // Se for kit, adiciona componentes
     if (formData.isKit) {
       const componentesValidos = componentes
         .filter((c) => c.produtoId && c.quantidade)
@@ -129,7 +127,6 @@ export function ProdutoForm({
     setComponentes(novos);
   };
 
-  // Filtra produtos para não incluir o próprio produto sendo editado
   const produtosDisponiveis = produtos.filter(
     (p) => !p.isKit && (!produto || p.id !== produto.id)
   );

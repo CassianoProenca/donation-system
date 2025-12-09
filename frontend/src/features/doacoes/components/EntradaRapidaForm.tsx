@@ -84,7 +84,6 @@ export function EntradaRapidaForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validação
     const itensValidos = itens.filter(
       (item) => item.produtoId > 0 && item.quantidade > 0
     );
@@ -99,7 +98,6 @@ export function EntradaRapidaForm() {
       observacoesGerais: observacoesGerais || undefined,
     });
 
-    // Reset form
     setItens([
       {
         produtoId: 0,

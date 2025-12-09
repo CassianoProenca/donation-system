@@ -9,7 +9,11 @@ import java.util.ArrayList;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "produtos")
+@Table(name = "produtos", indexes = {
+        @Index(name = "idx_produto_categoria", columnList = "categoria_id"),
+        @Index(name = "idx_produto_nome", columnList = "nome"),
+        @Index(name = "idx_produto_codigo_barras", columnList = "codigo_barras_fabricante")
+})
 public class Produto {
 
     @Id
@@ -21,7 +25,7 @@ public class Produto {
 
     private String descricao;
 
-    private String codigoBarrasFabricante; 
+    private String codigoBarrasFabricante;
 
     @ManyToOne
     @JoinColumn(name = "categoria_id", nullable = false)

@@ -15,6 +15,7 @@ import com.ong.backend.repositories.MovimentacaoRepository;
 import com.ong.backend.specifications.LoteSpecs;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LoteService {
 
     private final LoteRepository loteRepository;
@@ -229,17 +231,21 @@ public class LoteService {
 
     @Transactional
     public void atualizarQuantidade(Long loteId, int delta) {
-        Lote lote = loteRepository.findById(loteId)
+        Lote lote = loteRepository.findByIdWithLock(loteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lote", "id", loteId));
 
-        int novaQuantidade = lote.getQuantidadeAtual() + delta;
+        int quantidadeAnterior = lote.getQuantidadeAtual();
+        int novaQuantidade = quantidadeAnterior + delta;
 
         if (novaQuantidade < 0) {
-            throw new BusinessException("Quantidade insuficiente em estoque. Disponível: " + lote.getQuantidadeAtual());
+            log.warn("Tentativa de atualizar quantidade do lote {} para valor negativo. Disponível: {}, Delta: {}",
+                    loteId, quantidadeAnterior, delta);
+            throw new BusinessException("Quantidade insuficiente em estoque. Disponível: " + quantidadeAnterior);
         }
 
         lote.setQuantidadeAtual(novaQuantidade);
         loteRepository.save(lote);
+        log.debug("Quantidade do lote {} atualizada: {} -> {}", loteId, quantidadeAnterior, novaQuantidade);
     }
 
     @Transactional(readOnly = true)
@@ -250,6 +256,8 @@ public class LoteService {
 
     @Transactional
     public void consumirEstoquePorProduto(Long produtoId, int quantidadeNecessaria) {
+        log.info("Consumindo estoque do produto {}: quantidade necessária = {}", produtoId, quantidadeNecessaria);
+
         List<Lote> lotesComProduto = loteRepository.findAll().stream()
                 .filter(l -> l.getItens().stream()
                         .anyMatch(i -> i.getProduto().getId().equals(produtoId) && i.getQuantidade() > 0))
@@ -262,7 +270,10 @@ public class LoteService {
             if (qtdRestanteParaBaixar <= 0)
                 break;
 
-            LoteItem item = lote.getItens().stream()
+            Lote loteComLock = loteRepository.findByIdWithLock(lote.getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Lote", "id", lote.getId()));
+
+            LoteItem item = loteComLock.getItens().stream()
                     .filter(i -> i.getProduto().getId().equals(produtoId))
                     .findFirst()
                     .orElseThrow();
@@ -271,21 +282,27 @@ public class LoteService {
 
             if (disponivelNoLote >= qtdRestanteParaBaixar) {
                 item.setQuantidade(disponivelNoLote - qtdRestanteParaBaixar);
-                lote.setQuantidadeAtual(lote.getQuantidadeAtual() - qtdRestanteParaBaixar);
+                loteComLock.setQuantidadeAtual(loteComLock.getQuantidadeAtual() - qtdRestanteParaBaixar);
                 qtdRestanteParaBaixar = 0;
             } else {
                 item.setQuantidade(0);
-                lote.setQuantidadeAtual(lote.getQuantidadeAtual() - disponivelNoLote);
+                loteComLock.setQuantidadeAtual(loteComLock.getQuantidadeAtual() - disponivelNoLote);
                 qtdRestanteParaBaixar -= disponivelNoLote;
             }
 
             loteItemRepository.save(item);
-            loteRepository.save(lote);
+            loteRepository.save(loteComLock);
+            log.debug("Consumido {} do lote {} para produto {}", disponivelNoLote - item.getQuantidade(),
+                    loteComLock.getId(), produtoId);
         }
 
         if (qtdRestanteParaBaixar > 0) {
+            log.error("Estoque insuficiente para produto {}. Necessário: {}, Faltam: {}",
+                    produtoId, quantidadeNecessaria, qtdRestanteParaBaixar);
             throw new BusinessException(
                     "Estoque insuficiente para o produto ID: " + produtoId + ". Faltam: " + qtdRestanteParaBaixar);
         }
+
+        log.info("Estoque consumido com sucesso para produto {}", produtoId);
     }
 }

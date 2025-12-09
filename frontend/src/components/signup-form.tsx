@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth";
@@ -9,53 +10,36 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { signupSchema, type SignupFormData } from "@/features/auth/schemas/signupSchema";
 
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [confirmSenha, setConfirmSenha] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SignupFormData>({
+    resolver: zodResolver(signupSchema),
+  });
+
+  const { register: registerUser } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (senha !== confirmSenha) {
-      const errorMsg = "As senhas não coincidem";
-      setError(errorMsg);
-      toast.error(errorMsg);
-      return;
-    }
-
-    if (senha.length < 6) {
-      const errorMsg = "A senha deve ter no mínimo 6 caracteres";
-      setError(errorMsg);
-      toast.error(errorMsg);
-      return;
-    }
-
-    setIsLoading(true);
-
+  const onSubmit = async (data: SignupFormData) => {
     try {
-      await register(nome, email, senha, "VOLUNTARIO");
+      await registerUser(data.nome, data.email, data.senha, "VOLUNTARIO");
       navigate("/dashboard");
     } catch (err: any) {
       const errorMsg =
         err.response?.data?.message || "Erro ao criar conta. Tente novamente.";
-      setError(errorMsg);
-    } finally {
-      setIsLoading(false);
+      toast.error(errorMsg);
     }
   };
 
@@ -63,7 +47,7 @@ export function SignupForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden border-2 shadow-2xl p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit}>
+          <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
                 <div className="mb-2">
@@ -90,22 +74,16 @@ export function SignupForm({
                   Crie sua conta e comece a fazer a diferença
                 </p>
               </div>
-              {error && (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
-                  {error}
-                </div>
-              )}
               <Field>
                 <FieldLabel htmlFor="nome">Nome completo</FieldLabel>
                 <Input
                   id="nome"
                   type="text"
                   placeholder="Seu nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                  disabled={isLoading}
+                  {...register("nome")}
+                  disabled={isSubmitting}
                 />
+                <FieldError errors={errors.nome ? [errors.nome] : undefined} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -113,24 +91,22 @@ export function SignupForm({
                   id="email"
                   type="email"
                   placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
+                  {...register("email")}
+                  disabled={isSubmitting}
                 />
+                <FieldError errors={errors.email ? [errors.email] : undefined} />
               </Field>
               <Field>
-                <Field className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <Field>
                     <FieldLabel htmlFor="password">Senha</FieldLabel>
                     <Input
                       id="password"
                       type="password"
-                      value={senha}
-                      onChange={(e) => setSenha(e.target.value)}
-                      required
-                      disabled={isLoading}
+                      {...register("senha")}
+                      disabled={isSubmitting}
                     />
+                    <FieldError errors={errors.senha ? [errors.senha] : undefined} />
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="confirm-password">
@@ -139,22 +115,21 @@ export function SignupForm({
                     <Input
                       id="confirm-password"
                       type="password"
-                      value={confirmSenha}
-                      onChange={(e) => setConfirmSenha(e.target.value)}
-                      required
-                      disabled={isLoading}
+                      {...register("confirmSenha")}
+                      disabled={isSubmitting}
                     />
+                    <FieldError errors={errors.confirmSenha ? [errors.confirmSenha] : undefined} />
                   </Field>
-                </Field>
+                </div>
                 <FieldDescription>Mínimo de 6 caracteres</FieldDescription>
               </Field>
               <Field>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
                 >
-                  {isLoading ? "Criando conta..." : "Criar conta"}
+                  {isSubmitting ? "Criando conta..." : "Criar conta"}
                 </Button>
               </Field>
               <FieldDescription className="text-center">
