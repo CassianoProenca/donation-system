@@ -15,6 +15,7 @@ import com.ong.backend.models.Movimentacao;
 import com.ong.backend.models.Produto;
 import com.ong.backend.models.TipoMovimentacao;
 import com.ong.backend.models.Usuario;
+import com.ong.backend.models.UnidadeMedida;
 import com.ong.backend.repositories.MovimentacaoRepository;
 import com.ong.backend.specifications.MovimentacaoSpecs;
 
@@ -56,12 +57,13 @@ public class MovimentacaoService {
             Long usuarioId,
             String dataInicioStr,
             String dataFimStr,
+            String busca,
             Pageable pageable) {
         LocalDateTime inicio = (dataInicioStr != null && !dataInicioStr.isEmpty()) ? LocalDateTime.parse(dataInicioStr)
                 : null;
         LocalDateTime fim = (dataFimStr != null && !dataFimStr.isEmpty()) ? LocalDateTime.parse(dataFimStr) : null;
 
-        Specification<Movimentacao> spec = MovimentacaoSpecs.comFiltros(tipo, loteId, usuarioId, inicio, fim);
+        Specification<Movimentacao> spec = MovimentacaoSpecs.comFiltros(tipo, loteId, usuarioId, inicio, fim, busca);
 
         return movimentacaoRepository.findAll(spec, pageable)
                 .map(MovimentacaoResponseDTO::new);
@@ -204,13 +206,12 @@ public class MovimentacaoService {
                 dto.quantidade(),
                 null,
                 null,
-                null
-        );
+                null);
 
         LoteRequestDTO novoLoteDto = new LoteRequestDTO(
                 Collections.singletonList(itemKit),
                 java.time.LocalDate.now(),
-                com.ong.backend.models.UnidadeMedida.UNIDADE,
+                UnidadeMedida.UNIDADE,
                 "Montagem automática de Kit: " + kit.getNome());
 
         var loteCriadoResponse = loteService.criar(novoLoteDto, emailUsuario);

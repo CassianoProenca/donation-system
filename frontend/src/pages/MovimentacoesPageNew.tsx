@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { IconPlus, IconBox, IconX } from "@tabler/icons-react";
 import { PageCard } from "@/shared/components/layout/PageCard";
@@ -31,6 +31,7 @@ import {
   useMovimentacaoDialog,
 } from "@/features/movimentacoes/hooks";
 import { useDisclosure } from "@/shared/hooks/useDisclosure";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 const tipoLabels: Record<string, string> = {
   ENTRADA: "Entrada",
@@ -45,11 +46,18 @@ export function MovimentacoesPageNew() {
     filters,
     tempFilters,
     setTempFilters,
+    setFilters,
     applyFilters,
     resetFilters,
     clearFilter,
   } = useMovimentacaoFilters();
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm);
+
+  useEffect(() => {
+    setTempFilters((prev) => ({ ...prev, busca: debouncedSearch || undefined }));
+    setFilters((prev) => ({ ...prev, busca: debouncedSearch || undefined }));
+  }, [debouncedSearch, setFilters, setTempFilters]);
 
   const { data, isLoading } = useMovimentacoes(filters, {
     page,
@@ -73,7 +81,7 @@ export function MovimentacoesPageNew() {
     }
   };
 
-  const activeFilterCount = Object.keys(filters).length;
+  const activeFilterCount = Object.values(filters).filter((value) => value !== undefined && value !== "").length;
 
   return (
     <>
@@ -150,6 +158,17 @@ export function MovimentacoesPageNew() {
                   Data Fim: {filters.dataFim}
                   <button
                     onClick={() => clearFilter("dataFim")}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
+                  >
+                    <IconX className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {filters.busca && (
+                <Badge variant="secondary" className="gap-1">
+                  Busca: {filters.busca}
+                  <button
+                    onClick={() => clearFilter("busca")}
                     className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
                   >
                     <IconX className="h-3 w-3" />

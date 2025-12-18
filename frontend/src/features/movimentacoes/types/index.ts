@@ -52,4 +52,5 @@ export interface MovimentacaoFilters {
   tipo?: TipoMovimentacao;
   dataInicio?: string;
   dataFim?: string;
+  busca?: string;
 }

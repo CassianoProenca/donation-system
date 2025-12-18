@@ -49,14 +49,14 @@ describe("useDashboardMetrics", () => {
 
     vi.mocked(dashboardApi.getMetrics).mockResolvedValue(mockMetrics);
 
-    const { result } = renderHook(() => useDashboardMetrics(), { wrapper });
+    const { result } = renderHook(() => useDashboardMetrics("2025-12-01", "2025-12-18"), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(result.current.data).toEqual(mockMetrics);
-    expect(dashboardApi.getMetrics).toHaveBeenCalledTimes(1);
+    expect(dashboardApi.getMetrics).toHaveBeenCalledWith("2025-12-01", "2025-12-18");
   });
 
   it("deve lidar com erro ao buscar métricas", async () => {
@@ -93,19 +93,30 @@ describe("useDashboardMetrics", () => {
 
     vi.mocked(dashboardApi.getMetrics).mockResolvedValue(mockMetrics);
 
-    const { result, rerender } = renderHook(() => useDashboardMetrics(), {
-      wrapper,
-    });
+    const { result, rerender } = renderHook(
+      ({ dataInicio, dataFim }) => useDashboardMetrics(dataInicio, dataFim),
+      {
+        wrapper,
+        initialProps: { dataInicio: "2025-12-01", dataFim: "2025-12-18" },
+      }
+    );
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    // Rerender não deve fazer nova requisição devido ao cache
-    rerender();
+    // Rerender com os mesmos parâmetros não deve fazer nova requisição devido ao cache
+    rerender({ dataInicio: "2025-12-01", dataFim: "2025-12-18" });
 
-    // Ainda deve ter sido chamado apenas uma vez devido ao staleTime
+    // Ainda deve ter sido chamado apenas uma vez devido ao staleTime e mesma queryKey
     expect(dashboardApi.getMetrics).toHaveBeenCalledTimes(1);
+
+    // Rerender com parâmetros diferentes deve fazer nova requisição
+    rerender({ dataInicio: "2025-11-01", dataFim: "2025-11-30" });
+    
+    await waitFor(() => {
+      expect(dashboardApi.getMetrics).toHaveBeenCalledTimes(2);
+    });
   });
 });
 

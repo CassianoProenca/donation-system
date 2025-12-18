@@ -15,6 +15,10 @@ export const loteService = {
       params.append("dataEntradaInicio", filters.dataEntradaInicio);
     if (filters.dataEntradaFim)
       params.append("dataEntradaFim", filters.dataEntradaFim);
+    if (filters.dataValidadeInicio)
+      params.append("dataValidadeInicio", filters.dataValidadeInicio);
+    if (filters.dataValidadeFim)
+      params.append("dataValidadeFim", filters.dataValidadeFim);
     if (filters.comEstoque !== undefined)
       params.append("comEstoque", filters.comEstoque.toString());
     if (filters.busca) params.append("busca", filters.busca);

@@ -32,18 +32,21 @@ public class LoteController {
             @RequestParam(required = false) Long produtoId,
             @RequestParam(required = false) String dataEntradaInicio,
             @RequestParam(required = false) String dataEntradaFim,
+            @RequestParam(required = false) String dataValidadeInicio,
+            @RequestParam(required = false) String dataValidadeFim,
             @RequestParam(required = false) Boolean comEstoque,
             @RequestParam(required = false) String busca,
             @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-        
+
         return ResponseEntity.ok(loteService.listarComFiltros(
-            produtoId, 
-            dataEntradaInicio, 
-            dataEntradaFim, 
-            comEstoque, 
-            busca, 
-            pageable
-        ));
+                produtoId,
+                dataEntradaInicio,
+                dataEntradaFim,
+                dataValidadeInicio,
+                dataValidadeFim,
+                comEstoque,
+                busca,
+                pageable));
     }
 
     @GetMapping("/simples")

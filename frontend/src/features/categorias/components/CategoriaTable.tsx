@@ -42,6 +42,7 @@ export function CategoriaTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[80px]">Ícone</TableHead>
             <TableHead>Nome</TableHead>
             <TableHead>Descrição</TableHead>
             <TableHead className="text-right">Ações</TableHead>
@@ -50,6 +51,7 @@ export function CategoriaTable({
         <TableBody>
           {categorias.map((categoria) => (
             <TableRow key={categoria.id}>
+              <TableCell className="text-2xl">{categoria.icone || "-"}</TableCell>
               <TableCell className="font-medium">{categoria.nome}</TableCell>
               <TableCell>{categoria.descricao || "-"}</TableCell>
               <TableCell className="text-right">

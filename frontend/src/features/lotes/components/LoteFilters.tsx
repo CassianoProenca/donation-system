@@ -103,6 +103,34 @@ export function LoteFiltersComponent({
           </div>
 
           <div className="grid gap-2">
+            <Label>Validade (Início)</Label>
+            <Input
+              type="date"
+              value={tempFilters.dataValidadeInicio || ""}
+              onChange={(e) =>
+                onFilterChange({
+                  ...tempFilters,
+                  dataValidadeInicio: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Validade (Fim)</Label>
+            <Input
+              type="date"
+              value={tempFilters.dataValidadeFim || ""}
+              onChange={(e) =>
+                onFilterChange({
+                  ...tempFilters,
+                  dataValidadeFim: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid gap-2">
             <Label>Estoque</Label>
             <Select
               value={

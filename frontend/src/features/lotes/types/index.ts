@@ -45,6 +45,8 @@ export interface LoteFilters {
   produtoId?: number;
   dataEntradaInicio?: string;
   dataEntradaFim?: string;
+  dataValidadeInicio?: string;
+  dataValidadeFim?: string;
   comEstoque?: boolean;
   busca?: string;
 }

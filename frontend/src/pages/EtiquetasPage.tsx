@@ -18,13 +18,14 @@ import { Badge } from "@/components/ui/badge";
 import { loteService } from "@/features/lotes/api/loteService";
 import type { LoteResponse } from "@/features/lotes/types";
 import { etiquetaService } from "@/services/etiquetaService";
+import { PdfPreviewDialog } from "@/shared/components/data-display/PdfPreviewDialog";
 import {
-  IconFileTypePdf,
   IconLoader,
   IconSearch,
   IconChevronLeft,
   IconChevronRight,
   IconX,
+  IconEye,
 } from "@tabler/icons-react";
 
 export function EtiquetasPage() {
@@ -39,6 +40,9 @@ export function EtiquetasPage() {
 
   const [selectedBatchIds, setSelectedBatchIds] = useState<number[]>([]);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
   const loadLotes = async () => {
     try {
@@ -103,13 +107,14 @@ export function EtiquetasPage() {
     try {
       setGeneratingPdf(true);
       toast.info(
-        "Gerando PDF com " + selectedBatchIds.length + " etiquetas..."
+        "Gerando visualização de " + selectedBatchIds.length + " etiquetas..."
       );
-      await etiquetaService.imprimirLotePDF(selectedBatchIds);
-      toast.success("PDF gerado e baixado com sucesso!");
-      setSelectedBatchIds([]);
+      const blob = await etiquetaService.obterLotePDFBlob(selectedBatchIds);
+      setPdfBlob(blob);
+      setPreviewOpen(true);
+      toast.success("Visualização gerada com sucesso!");
     } catch {
-      toast.error("Erro ao gerar arquivo PDF.");
+      toast.error("Erro ao gerar visualização das etiquetas.");
     } finally {
       setGeneratingPdf(false);
     }
@@ -160,12 +165,12 @@ export function EtiquetasPage() {
               {generatingPdf ? (
                 <>
                   <IconLoader className="animate-spin mr-2 h-4 w-4" />
-                  Gerando...
+                  Processando...
                 </>
               ) : (
                 <>
-                  <IconFileTypePdf className="mr-2 h-4 w-4" />
-                  Gerar PDF
+                  <IconEye className="mr-2 h-4 w-4" />
+                  Visualizar
                 </>
               )}
             </Button>
@@ -325,6 +330,13 @@ export function EtiquetasPage() {
           </>
         )}
       </CardContent>
+
+      <PdfPreviewDialog
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        pdfBlob={pdfBlob}
+        title={`Etiquetas - ${selectedBatchIds.length} Lote(s)`}
+      />
     </Card>
   );
 }

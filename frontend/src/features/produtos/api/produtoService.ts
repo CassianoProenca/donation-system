@@ -21,6 +21,15 @@ export const produtoApi = {
     if (filters.categoriaId) {
       params.append("categoriaId", filters.categoriaId.toString());
     }
+    if (filters.estoqueCritico) {
+      params.append("estoqueCritico", "true");
+    }
+    if (filters.estoqueAte !== undefined && filters.estoqueAte !== null) {
+      params.append("estoqueAte", filters.estoqueAte.toString());
+    }
+    if (filters.somenteComEstoque) {
+      params.append("somenteComEstoque", "true");
+    }
 
     const response = await api.get(`/api/produtos?${params.toString()}`);
     return response.data;

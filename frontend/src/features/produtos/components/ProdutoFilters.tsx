@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SearchInput } from "@/shared/components/forms";
 import { IconFilter, IconX } from "@tabler/icons-react";
 import type { ProdutoFilters } from "../types";
@@ -90,6 +91,29 @@ export function ProdutoFiltersComponent({
             <IconX className="h-4 w-4" />
           </Button>
         )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Apenas estoque crítico</p>
+            <p className="text-xs text-muted-foreground">Produtos abaixo de 10 unidades</p>
+          </div>
+          <Checkbox
+            checked={!!filters.estoqueCritico}
+            onCheckedChange={(checked: boolean) => onFilterChange("estoqueCritico", checked)}
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Somente com estoque</p>
+            <p className="text-xs text-muted-foreground">Oculta itens zerados</p>
+          </div>
+          <Checkbox
+            checked={!!filters.somenteComEstoque}
+            onCheckedChange={(checked: boolean) => onFilterChange("somenteComEstoque", checked)}
+          />
+        </div>
       </div>
     </div>
   );

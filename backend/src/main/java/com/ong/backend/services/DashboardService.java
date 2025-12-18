@@ -22,10 +22,22 @@ public class DashboardService {
     private final CategoriaRepository categoriaRepository;
     private final ProdutoRepository produtoRepository;
     private final LoteRepository loteRepository;
+    private final LoteItemRepository loteItemRepository;
     private final MovimentacaoRepository movimentacaoRepository;
 
     @Transactional(readOnly = true)
-    public DashboardMetricsDTO obterMetricas() {
+    public DashboardMetricsDTO obterMetricas(LocalDate dataInicio, LocalDate dataFim) {
+        // Se não informar datas, assume do dia 1 do mês atual até hoje (conforme pedido pelo PO)
+        if (dataInicio == null) {
+            dataInicio = LocalDate.now().withDayOfMonth(1);
+        }
+        if (dataFim == null) {
+            dataFim = LocalDate.now();
+        }
+
+        LocalDateTime inicioPeriodo = dataInicio.atStartOfDay();
+        LocalDateTime fimPeriodo = dataFim.atTime(23, 59, 59);
+
         Long totalCategorias = categoriaRepository.count();
         Long totalProdutos = produtoRepository.count();
         Long totalLotes = loteRepository.count();
@@ -34,24 +46,21 @@ public class DashboardService {
                 .mapToLong(lote -> lote.getQuantidadeAtual() != null ? lote.getQuantidadeAtual() : 0L)
                 .sum();
 
-        LocalDate hoje = LocalDate.now();
-        LocalDateTime inicioHoje = hoje.atStartOfDay();
-        LocalDateTime fimHoje = hoje.atTime(23, 59, 59);
-        Integer movimentacoesHoje = movimentacaoRepository.findByDataHoraBetween(inicioHoje, fimHoje).size();
+        Integer movimentacoesNoPeriodo = movimentacaoRepository.findByDataHoraBetween(inicioPeriodo, fimPeriodo).size();
 
         AlertasCriticosDTO alertas = obterAlertasCriticos();
-        List<EvolucaoEstoqueDTO> evolucaoEstoque = obterEvolucaoEstoque();
-        List<TopProdutoDTO> top5Produtos = obterTop5ProdutosMaisDistribuidos();
-        List<MovimentacaoResumoDTO> ultimasMovimentacoes = obterUltimasMovimentacoes(10);
-        List<MovimentacaoPorDiaDTO> movimentacoesPorDia = obterMovimentacoesPorDia(7);
-        List<TipoMovimentacaoCountDTO> movimentacoesPorTipo = obterMovimentacoesPorTipo();
+        List<EvolucaoEstoqueDTO> evolucaoEstoque = obterEvolucaoEstoque(dataInicio, dataFim);
+        List<TopProdutoDTO> top5Produtos = obterTop5ProdutosMaisDistribuidos(inicioPeriodo, fimPeriodo);
+        List<MovimentacaoResumoDTO> ultimasMovimentacoes = obterUltimasMovimentacoes(10, inicioPeriodo, fimPeriodo);
+        List<MovimentacaoPorDiaDTO> movimentacoesPorDia = obterMovimentacoesPorDia(dataInicio, dataFim);
+        List<TipoMovimentacaoCountDTO> movimentacoesPorTipo = obterMovimentacoesPorTipo(inicioPeriodo, fimPeriodo);
 
         return new DashboardMetricsDTO(
                 totalCategorias,
                 totalProdutos,
                 totalLotes,
                 estoqueTotal,
-                movimentacoesHoje,
+                movimentacoesNoPeriodo, // Alterado para refletir o período selecionado
                 alertas,
                 evolucaoEstoque,
                 top5Produtos,
@@ -62,13 +71,11 @@ public class DashboardService {
 
     private AlertasCriticosDTO obterAlertasCriticos() {
         LocalDate hoje = LocalDate.now();
-        LocalDate em7Dias = hoje.plusDays(7);
+        LocalDate em30Dias = hoje.plusDays(30);
 
         Long lotesVencendo = loteRepository.findAll().stream()
                 .filter(lote -> {
-                    if (lote.getItens() == null || lote.getItens().isEmpty())
-                        return false;
-                    if (lote.getQuantidadeAtual() == null || lote.getQuantidadeAtual() == 0)
+                    if (lote.getQuantidadeAtual() == null || lote.getQuantidadeAtual() <= 0)
                         return false;
 
                     return lote.getItens().stream()
@@ -76,12 +83,18 @@ public class DashboardService {
                                 if (item.getDataValidade() == null)
                                     return false;
                                 LocalDate validade = item.getDataValidade();
-                                return !validade.isBefore(hoje) && !validade.isAfter(em7Dias);
+                                return !validade.isBefore(hoje) && !validade.isAfter(em30Dias);
                             });
                 })
                 .count();
 
-        Long produtosEstoqueBaixo = 0L;
+        // Calcula produtos com estoque baixo (ex: < 10 unidades no total)
+        Long produtosEstoqueBaixo = produtoRepository.findAll().stream()
+                .filter(p -> {
+                    Integer total = loteItemRepository.calcularEstoqueTotalPorProduto(p.getId());
+                    return total != null && total > 0 && total < 10;
+                })
+                .count();
 
         Long lotesSemEstoque = loteRepository.findAll().stream()
                 .filter(lote -> lote.getQuantidadeAtual() == null || lote.getQuantidadeAtual() == 0)
@@ -90,25 +103,55 @@ public class DashboardService {
         return new AlertasCriticosDTO(lotesVencendo, produtosEstoqueBaixo, lotesSemEstoque);
     }
 
-    private List<EvolucaoEstoqueDTO> obterEvolucaoEstoque() {
-        Long estoqueAtual = loteRepository.findAll().stream()
+    private List<EvolucaoEstoqueDTO> obterEvolucaoEstoque(LocalDate dataInicio, LocalDate dataFim) {
+        List<EvolucaoEstoqueDTO> evolucao = new ArrayList<>();
+        
+        long estoqueSimulado = loteRepository.findAll().stream()
                 .mapToLong(lote -> lote.getQuantidadeAtual() != null ? lote.getQuantidadeAtual() : 0L)
                 .sum();
 
-        List<EvolucaoEstoqueDTO> evolucao = new ArrayList<>();
         LocalDate hoje = LocalDate.now();
-        for (int i = 29; i >= 0; i--) {
-            LocalDate dia = hoje.minusDays(i);
-            evolucao.add(new EvolucaoEstoqueDTO(
+        
+        // Se o fim do período for antes de hoje, precisamos voltar o estoque até aquele dia
+        if (dataFim.isBefore(hoje)) {
+            List<com.ong.backend.models.Movimentacao> movsFuturas = movimentacaoRepository.findByDataHoraBetween(
+                dataFim.plusDays(1).atStartOfDay(), 
+                hoje.atTime(23,59,59)
+            );
+            for (com.ong.backend.models.Movimentacao m : movsFuturas) {
+                if (m.getTipo() == TipoMovimentacao.ENTRADA || m.getTipo() == TipoMovimentacao.AJUSTE_GANHO) {
+                    estoqueSimulado -= m.getQuantidade();
+                } else {
+                    estoqueSimulado += m.getQuantidade();
+                }
+            }
+        }
+
+        // Reconstrói o histórico dia a dia dentro do range selecionado
+        for (LocalDate dia = dataFim; !dia.isBefore(dataInicio); dia = dia.minusDays(1)) {
+            evolucao.add(0, new EvolucaoEstoqueDTO(
                     dia.format(DateTimeFormatter.ofPattern("dd/MM")),
-                    estoqueAtual));
+                    estoqueSimulado));
+            
+            LocalDateTime inicioDia = dia.atStartOfDay();
+            LocalDateTime fimDia = dia.atTime(23, 59, 59);
+            List<com.ong.backend.models.Movimentacao> movsDia = movimentacaoRepository.findByDataHoraBetween(inicioDia, fimDia);
+            
+            for (com.ong.backend.models.Movimentacao m : movsDia) {
+                if (m.getTipo() == TipoMovimentacao.ENTRADA || m.getTipo() == TipoMovimentacao.AJUSTE_GANHO) {
+                    estoqueSimulado -= m.getQuantidade();
+                } else {
+                    estoqueSimulado += m.getQuantidade();
+                }
+            }
         }
         return evolucao;
     }
 
-    private List<TopProdutoDTO> obterTop5ProdutosMaisDistribuidos() {
+    private List<TopProdutoDTO> obterTop5ProdutosMaisDistribuidos(LocalDateTime inicio, LocalDateTime fim) {
         Map<String, Long> saidasPorProduto = movimentacaoRepository.findAll().stream()
                 .filter(mov -> mov.getTipo() == TipoMovimentacao.SAIDA)
+                .filter(mov -> !mov.getDataHora().isBefore(inicio) && !mov.getDataHora().isAfter(fim))
                 .collect(Collectors.groupingBy(
                         mov -> {
                             if (mov.getLote().getItens() != null && !mov.getLote().getItens().isEmpty()) {
@@ -124,12 +167,13 @@ public class DashboardService {
                 .map(entry -> new TopProdutoDTO(
                         entry.getKey(),
                         entry.getValue(),
-                        LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))))
+                        fim.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))))
                 .collect(Collectors.toList());
     }
 
-    private List<MovimentacaoResumoDTO> obterUltimasMovimentacoes(int limite) {
+    private List<MovimentacaoResumoDTO> obterUltimasMovimentacoes(int limite, LocalDateTime inicio, LocalDateTime fim) {
         return movimentacaoRepository.findAll().stream()
+                .filter(mov -> !mov.getDataHora().isBefore(inicio) && !mov.getDataHora().isAfter(fim))
                 .sorted((a, b) -> b.getDataHora().compareTo(a.getDataHora()))
                 .limit(limite)
                 .map(mov -> {
@@ -149,12 +193,10 @@ public class DashboardService {
                 .collect(Collectors.toList());
     }
 
-    private List<MovimentacaoPorDiaDTO> obterMovimentacoesPorDia(int dias) {
-        LocalDate hoje = LocalDate.now();
+    private List<MovimentacaoPorDiaDTO> obterMovimentacoesPorDia(LocalDate dataInicio, LocalDate dataFim) {
         List<MovimentacaoPorDiaDTO> resultado = new ArrayList<>();
 
-        for (int i = dias - 1; i >= 0; i--) {
-            LocalDate dia = hoje.minusDays(i);
+        for (LocalDate dia = dataInicio; !dia.isAfter(dataFim); dia = dia.plusDays(1)) {
             LocalDateTime inicioDia = dia.atStartOfDay();
             LocalDateTime fimDia = dia.atTime(23, 59, 59);
 
@@ -179,8 +221,9 @@ public class DashboardService {
         return resultado;
     }
 
-    private List<TipoMovimentacaoCountDTO> obterMovimentacoesPorTipo() {
+    private List<TipoMovimentacaoCountDTO> obterMovimentacoesPorTipo(LocalDateTime inicio, LocalDateTime fim) {
         Map<TipoMovimentacao, Long> countPorTipo = movimentacaoRepository.findAll().stream()
+                .filter(mov -> !mov.getDataHora().isBefore(inicio) && !mov.getDataHora().isAfter(fim))
                 .collect(Collectors.groupingBy(
                         com.ong.backend.models.Movimentacao::getTipo,
                         Collectors.counting()));

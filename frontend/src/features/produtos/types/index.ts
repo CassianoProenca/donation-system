@@ -29,6 +29,7 @@ export interface ProdutoSimples {
   categoria: {
     id: number;
     nome: string;
+    icone?: string;
   };
 }
 
@@ -45,5 +46,8 @@ export interface ProdutoFilters {
   nome?: string;
   categoriaId?: number;
   isKit?: string;
+  estoqueCritico?: boolean;
+  estoqueAte?: number;
+  somenteComEstoque?: boolean;
   [key: string]: unknown;
 }

@@ -18,6 +18,8 @@ public class LoteSpecs {
       Long produtoId,
       LocalDate dataInicio,
       LocalDate dataFim,
+      LocalDate dataValidadeInicio,
+      LocalDate dataValidadeFim,
       Boolean comEstoque,
       String busca) {
     return (root, query, builder) -> {
@@ -37,6 +39,14 @@ public class LoteSpecs {
       }
       if (dataFim != null) {
         predicates.add(builder.lessThanOrEqualTo(root.get("dataEntrada"), dataFim));
+      }
+
+      if (dataValidadeInicio != null) {
+        predicates.add(builder.greaterThanOrEqualTo(itensJoin.get("dataValidade"), dataValidadeInicio));
+      }
+
+      if (dataValidadeFim != null) {
+        predicates.add(builder.lessThanOrEqualTo(itensJoin.get("dataValidade"), dataValidadeFim));
       }
 
       if (comEstoque != null) {

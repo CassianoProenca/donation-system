@@ -33,6 +33,9 @@ class DashboardServiceTest {
     private LoteRepository loteRepository;
 
     @Mock
+    private LoteItemRepository loteItemRepository;
+
+    @Mock
     private MovimentacaoRepository movimentacaoRepository;
 
     @InjectMocks
@@ -96,7 +99,7 @@ class DashboardServiceTest {
         when(movimentacaoRepository.findAll()).thenReturn(Arrays.asList(movimentacao));
 
         // Act
-        DashboardMetricsDTO result = dashboardService.obterMetricas();
+        DashboardMetricsDTO result = dashboardService.obterMetricas(null, null);
 
         // Assert
         assertNotNull(result);
@@ -136,18 +139,18 @@ class DashboardServiceTest {
         when(movimentacaoRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
-        DashboardMetricsDTO result = dashboardService.obterMetricas();
+        DashboardMetricsDTO result = dashboardService.obterMetricas(null, null);
 
         // Assert
         assertEquals(150L, result.estoqueTotal());
     }
 
     @Test
-    @DisplayName("Deve identificar lotes vencendo em 7 dias")
+    @DisplayName("Deve identificar lotes vencendo em 30 dias")
     void deveIdentificarLotesVencendo() {
         // Arrange
         LoteItem itemVencendo = new LoteItem();
-        itemVencendo.setDataValidade(LocalDate.now().plusDays(5));
+        itemVencendo.setDataValidade(LocalDate.now().plusDays(25));
         itemVencendo.setQuantidade(10);
 
         Lote loteVencendo = new Lote();
@@ -164,7 +167,7 @@ class DashboardServiceTest {
         when(movimentacaoRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
-        DashboardMetricsDTO result = dashboardService.obterMetricas();
+        DashboardMetricsDTO result = dashboardService.obterMetricas(null, null);
 
         // Assert
         assertTrue(result.alertasCriticos().lotesVencendo() > 0);
@@ -187,31 +190,31 @@ class DashboardServiceTest {
         when(movimentacaoRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
-        DashboardMetricsDTO result = dashboardService.obterMetricas();
+        DashboardMetricsDTO result = dashboardService.obterMetricas(null, null);
 
         // Assert
         assertEquals(1L, result.alertasCriticos().lotesSemEstoque());
     }
 
     @Test
-    @DisplayName("Deve retornar movimentações de hoje corretamente")
-    void deveRetornarMovimentacoesHoje() {
+    @DisplayName("Deve retornar movimentações do período corretamente")
+    void deveRetornarMovimentacoesNoPeriodo() {
         // Arrange
-        Movimentacao movHoje = new Movimentacao();
-        movHoje.setDataHora(LocalDateTime.now());
-        movHoje.setTipo(TipoMovimentacao.ENTRADA);
-        movHoje.setQuantidade(10);
+        Movimentacao movNoPeriodo = new Movimentacao();
+        movNoPeriodo.setDataHora(LocalDateTime.now());
+        movNoPeriodo.setTipo(TipoMovimentacao.ENTRADA);
+        movNoPeriodo.setQuantidade(10);
 
         when(categoriaRepository.count()).thenReturn(1L);
         when(produtoRepository.count()).thenReturn(1L);
         when(loteRepository.count()).thenReturn(1L);
         when(loteRepository.findAll()).thenReturn(new ArrayList<>());
         when(movimentacaoRepository.findByDataHoraBetween(any(), any()))
-                .thenReturn(Arrays.asList(movHoje, movHoje, movHoje));
+                .thenReturn(Arrays.asList(movNoPeriodo, movNoPeriodo, movNoPeriodo));
         when(movimentacaoRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
-        DashboardMetricsDTO result = dashboardService.obterMetricas();
+        DashboardMetricsDTO result = dashboardService.obterMetricas(null, null);
 
         // Assert
         assertEquals(3, result.movimentacoesHoje());
@@ -221,6 +224,9 @@ class DashboardServiceTest {
     @DisplayName("Deve retornar lista vazia quando não há dados")
     void deveRetornarListaVaziaQuandoNaoHaDados() {
         // Arrange
+        LocalDate inicio = LocalDate.now().minusDays(7);
+        LocalDate fim = LocalDate.now();
+
         when(categoriaRepository.count()).thenReturn(0L);
         when(produtoRepository.count()).thenReturn(0L);
         when(loteRepository.count()).thenReturn(0L);
@@ -230,7 +236,7 @@ class DashboardServiceTest {
         when(movimentacaoRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
-        DashboardMetricsDTO result = dashboardService.obterMetricas();
+        DashboardMetricsDTO result = dashboardService.obterMetricas(inicio, fim);
 
         // Assert
         assertNotNull(result);
@@ -239,10 +245,10 @@ class DashboardServiceTest {
         assertEquals(0L, result.totalLotes());
         assertEquals(0L, result.estoqueTotal());
         assertEquals(0, result.movimentacoesHoje());
-        // evolucaoEstoque sempre retorna 30 dias (mesmo sem dados)
-        assertEquals(30, result.evolucaoEstoque().size());
+
+        // evolucaoEstoque retorna a quantidade de dias do período
+        assertEquals(8, result.evolucaoEstoque().size()); // 7 dias atrás + hoje = 8 dias
         assertTrue(result.top5ProdutosMaisDistribuidos().isEmpty());
         assertTrue(result.ultimasMovimentacoes().isEmpty());
     }
 }
-

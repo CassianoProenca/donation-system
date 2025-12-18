@@ -25,6 +25,7 @@ export const useLoteFilters = () => {
     filters,
     tempFilters,
     setTempFilters,
+    setFilters,
     applyFilters,
     resetFilters,
     clearFilter,

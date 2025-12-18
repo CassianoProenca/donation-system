@@ -9,6 +9,9 @@ import com.ong.backend.exceptions.ResourceNotFoundException;
 import com.ong.backend.models.Lote;
 import com.ong.backend.models.LoteItem;
 import com.ong.backend.models.Produto;
+import com.ong.backend.models.Usuario;
+import com.ong.backend.models.Movimentacao;
+import com.ong.backend.models.TipoMovimentacao;
 import com.ong.backend.repositories.LoteRepository;
 import com.ong.backend.repositories.LoteItemRepository;
 import com.ong.backend.repositories.MovimentacaoRepository;
@@ -49,6 +52,8 @@ public class LoteService {
             Long produtoId,
             String dataEntradaInicio,
             String dataEntradaFim,
+            String dataValidadeInicio,
+            String dataValidadeFim,
             Boolean comEstoque,
             String busca,
             Pageable pageable) {
@@ -57,9 +62,15 @@ public class LoteService {
                 ? LocalDate.parse(dataEntradaInicio)
                 : null;
         LocalDate fim = (dataEntradaFim != null && !dataEntradaFim.isEmpty()) ? LocalDate.parse(dataEntradaFim) : null;
+        LocalDate validadeInicio = (dataValidadeInicio != null && !dataValidadeInicio.isEmpty())
+                ? LocalDate.parse(dataValidadeInicio)
+                : null;
+        LocalDate validadeFim = (dataValidadeFim != null && !dataValidadeFim.isEmpty())
+                ? LocalDate.parse(dataValidadeFim)
+                : null;
 
         return loteRepository.findAll(
-                LoteSpecs.comFiltros(produtoId, inicio, fim, comEstoque, busca),
+                LoteSpecs.comFiltros(produtoId, inicio, fim, validadeInicio, validadeFim, comEstoque, busca),
                 pageable).map(LoteResponseDTO::new);
     }
 
@@ -146,7 +157,7 @@ public class LoteService {
         dto.itens().forEach(itemDto -> {
             Produto produto = produtoService.buscarEntidadePorId(itemDto.produtoId());
 
-            com.ong.backend.models.LoteItem item = new com.ong.backend.models.LoteItem();
+            LoteItem item = new LoteItem();
             item.setLote(finalLote);
             item.setProduto(produto);
             item.setQuantidade(itemDto.quantidade());
@@ -165,12 +176,12 @@ public class LoteService {
     }
 
     private void criarMovimentacaoEntrada(Lote lote, String emailUsuarioAutenticado) {
-        com.ong.backend.models.Usuario usuario = usuarioService.buscarEntidadePorEmail(emailUsuarioAutenticado);
+        Usuario usuario = usuarioService.buscarEntidadePorEmail(emailUsuarioAutenticado);
 
-        com.ong.backend.models.Movimentacao movimentacao = new com.ong.backend.models.Movimentacao();
+        Movimentacao movimentacao = new Movimentacao();
         movimentacao.setLote(lote);
         movimentacao.setUsuario(usuario);
-        movimentacao.setTipo(com.ong.backend.models.TipoMovimentacao.ENTRADA);
+        movimentacao.setTipo(TipoMovimentacao.ENTRADA);
         movimentacao.setQuantidade(lote.getQuantidadeInicial());
         movimentacao.setDataHora(java.time.LocalDateTime.now());
 
@@ -202,7 +213,7 @@ public class LoteService {
         dto.itens().forEach(itemDto -> {
             Produto produto = produtoService.buscarEntidadePorId(itemDto.produtoId());
 
-            com.ong.backend.models.LoteItem item = new com.ong.backend.models.LoteItem();
+            LoteItem item = new LoteItem();
             item.setLote(finalLote);
             item.setProduto(produto);
             item.setQuantidade(itemDto.quantidade());

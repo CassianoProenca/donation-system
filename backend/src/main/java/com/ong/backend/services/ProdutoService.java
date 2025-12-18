@@ -14,6 +14,7 @@ import com.ong.backend.repositories.ComposicaoProdutoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -28,14 +29,31 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProdutoService {
 
+    private static final int ESTOQUE_CRITICO_PADRAO = 10;
+
     private final ProdutoRepository produtoRepository;
     private final LoteItemRepository loteItemRepository;
     private final CategoriaService categoriaService;
     private final ComposicaoProdutoRepository composicaoProdutoRepository;
 
     @Transactional(readOnly = true)
-    public Page<ProdutoResponseDTO> listarComFiltros(String nome, Long categoriaId, Pageable pageable) {
-        return produtoRepository.findAll(ProdutoSpecs.comFiltros(nome, categoriaId), pageable)
+    @Cacheable(value = "produtos", key = "{#nome, #categoriaId, #estoqueCritico, #estoqueAte, #somenteComEstoque, #pageable}")
+    public Page<ProdutoResponseDTO> listarComFiltros(String nome,
+            Long categoriaId,
+            Boolean estoqueCritico,
+            Integer estoqueAte,
+            Boolean somenteComEstoque,
+            Pageable pageable) {
+        Integer limite = estoqueAte;
+        if (limite == null && Boolean.TRUE.equals(estoqueCritico)) {
+            limite = ESTOQUE_CRITICO_PADRAO;
+        }
+
+        boolean apenasComEstoque = Boolean.TRUE.equals(estoqueCritico) || Boolean.TRUE.equals(somenteComEstoque);
+
+        return produtoRepository
+                .findAll(ProdutoSpecs.comFiltros(nome, categoriaId, limite, apenasComEstoque),
+                        pageable)
                 .map(ProdutoResponseDTO::new);
     }
 
@@ -52,6 +70,7 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "produtos")
     public List<ProdutoResponseDTO> listarTodos() {
         return produtoRepository.findAll()
                 .stream()
@@ -60,6 +79,7 @@ public class ProdutoService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "produtos")
     public List<ProdutoSimplesDTO> listarTodosSimples() {
         return produtoRepository.findAll()
                 .stream()

@@ -28,8 +28,12 @@ public class ProdutoController {
     public ResponseEntity<Page<ProdutoResponseDTO>> listarTodos(
             @RequestParam(required = false) String nome,
             @RequestParam(required = false) Long categoriaId,
+            @RequestParam(required = false) Boolean estoqueCritico,
+            @RequestParam(required = false) Integer estoqueAte,
+            @RequestParam(required = false) Boolean somenteComEstoque,
             @PageableDefault(page = 0, size = 10, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable) {
-        return ResponseEntity.ok(produtoService.listarComFiltros(nome, categoriaId, pageable));
+        return ResponseEntity.ok(produtoService.listarComFiltros(nome, categoriaId, estoqueCritico, estoqueAte,
+                somenteComEstoque, pageable));
     }
 
     @GetMapping("/simples")

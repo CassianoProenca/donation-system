@@ -28,14 +28,16 @@ export const etiquetaService = {
     return response.data;
   },
 
-  async imprimirLotePDF(loteIds: number[]): Promise<void> {
+  async obterLotePDFBlob(loteIds: number[]): Promise<Blob> {
     const response = await api.post("/api/etiquetas/imprimir-lote", loteIds, {
       responseType: "blob",
     });
+    return new Blob([response.data], { type: "application/pdf" });
+  },
 
-    const url = window.URL.createObjectURL(
-      new Blob([response.data], { type: "application/pdf" })
-    );
+  async imprimirLotePDF(loteIds: number[]): Promise<void> {
+    const blob = await this.obterLotePDFBlob(loteIds);
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", `etiquetas-lote-${new Date().getTime()}.pdf`);

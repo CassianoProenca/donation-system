@@ -25,6 +25,7 @@ export const useMovimentacaoFilters = () => {
     filters,
     tempFilters,
     setTempFilters,
+    setFilters,
     applyFilters,
     resetFilters,
     clearFilter,

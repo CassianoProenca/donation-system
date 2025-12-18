@@ -18,8 +18,9 @@ export const movimentacaoService = {
     if (filters.usuarioId)
       params.append("usuarioId", filters.usuarioId.toString());
     if (filters.tipo) params.append("tipo", filters.tipo);
-    if (filters.dataInicio) params.append("dataInicio", filters.dataInicio);
-    if (filters.dataFim) params.append("dataFim", filters.dataFim);
+    if (filters.dataInicio) params.append("dataInicio", `${filters.dataInicio}T00:00:00`);
+    if (filters.dataFim) params.append("dataFim", `${filters.dataFim}T23:59:59`);
+    if (filters.busca) params.append("busca", filters.busca);
 
     params.append("page", (pagination.page ?? 0).toString());
     params.append("size", (pagination.size ?? 10).toString());

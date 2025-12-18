@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { addDays, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { IconPlus } from "@tabler/icons-react";
 import { PageCard } from "@/shared/components/layout/PageCard";
@@ -7,7 +9,7 @@ import { Pagination } from "@/shared/components/data-display/Pagination";
 import { usePagination } from "@/shared/hooks/usePagination";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Badge } from "@/components/ui/badge";
-import { IconX } from "@tabler/icons-react";
+import { IconX, IconAlertTriangle } from "@tabler/icons-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,20 +29,45 @@ import { useLotes, useDeleteLote } from "@/features/lotes/api";
 import { useLoteFilters, useLoteDialog } from "@/features/lotes/hooks";
 
 export function LotesPageNew() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { page, pageSize, goToPage, setPageSize } = usePagination();
   const {
     filters,
     tempFilters,
     setTempFilters,
+    setFilters,
     applyFilters,
     resetFilters,
     clearFilter,
   } = useLoteFilters();
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm);
+  const [alertFilter, setAlertFilter] = useState<string | null>(null);
+
+  // Aplicar filtros automaticamente quando vindo do dashboard
+  useEffect(() => {
+    const filtro = searchParams.get('filtro');
+    if (filtro === 'vencendo') {
+      const hoje = format(new Date(), "yyyy-MM-dd");
+      const horizonte = format(addDays(new Date(), 30), "yyyy-MM-dd");
+      const alertaFilters = {
+        dataValidadeInicio: hoje,
+        dataValidadeFim: horizonte,
+        comEstoque: true,
+      };
+      setFilters((prev) => ({ ...prev, ...alertaFilters }));
+      setTempFilters((prev) => ({ ...prev, ...alertaFilters }));
+      setAlertFilter('vencendo');
+      setSearchParams({});
+    }
+  }, [searchParams, setFilters, setTempFilters, setSearchParams]);
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, busca: debouncedSearch || undefined }));
+  }, [debouncedSearch, setFilters]);
 
   const { data, isLoading } = useLotes(
-    { ...filters, produtoId: debouncedSearch ? undefined : filters.produtoId },
+    { ...filters, busca: debouncedSearch || undefined },
     { page, size: pageSize }
   );
 
@@ -56,7 +83,7 @@ export function LotesPageNew() {
     }
   };
 
-  const activeFilterCount = Object.keys(filters).length;
+  const activeFilterCount = Object.values(filters).filter((value) => value !== undefined && value !== "").length;
 
   return (
     <>
@@ -71,6 +98,26 @@ export function LotesPageNew() {
         }
       >
         <div className="space-y-4">
+          {alertFilter === 'vencendo' && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-start gap-3">
+              <IconAlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-destructive mb-1">Lotes Vencendo em 30 Dias</h4>
+                <p className="text-sm text-muted-foreground">Mostrando apenas lotes com validade nos próximos 30 dias. {' '}
+                  <button 
+                    onClick={() => {
+                      resetFilters();
+                      setAlertFilter(null);
+                      setSearchParams({});
+                    }} 
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Limpar filtro
+                  </button>
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <SearchInput
@@ -122,11 +169,44 @@ export function LotesPageNew() {
                   </button>
                 </Badge>
               )}
+              {filters.dataValidadeInicio && (
+                <Badge variant="secondary" className="gap-1">
+                  Validade Início: {filters.dataValidadeInicio}
+                  <button
+                    onClick={() => clearFilter("dataValidadeInicio")}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
+                  >
+                    <IconX className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {filters.dataValidadeFim && (
+                <Badge variant="secondary" className="gap-1">
+                  Validade Fim: {filters.dataValidadeFim}
+                  <button
+                    onClick={() => clearFilter("dataValidadeFim")}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
+                  >
+                    <IconX className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
               {filters.comEstoque !== undefined && (
                 <Badge variant="secondary" className="gap-1">
                   {filters.comEstoque ? "Com estoque" : "Sem estoque"}
                   <button
                     onClick={() => clearFilter("comEstoque")}
+                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
+                  >
+                    <IconX className="h-3 w-3" />
+                  </button>
+                </Badge>
+              )}
+              {filters.busca && (
+                <Badge variant="secondary" className="gap-1">
+                  Busca: {filters.busca}
+                  <button
+                    onClick={() => clearFilter("busca")}
                     className="ml-1 hover:bg-secondary-foreground/20 rounded-full"
                   >
                     <IconX className="h-3 w-3" />

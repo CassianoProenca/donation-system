@@ -13,11 +13,16 @@ import {
   IconTrash,
   IconPackage,
   IconCalendar,
+  IconPrinter,
 } from "@tabler/icons-react";
 import { LoadingSpinner } from "@/shared/components/data-display/LoadingSpinner";
 import { EmptyState } from "@/shared/components/data-display/EmptyState";
 import { formatDate } from "@/shared/lib/formatters";
 import type { LoteResponse } from "../types";
+import { PdfPreviewDialog } from "@/shared/components/data-display/PdfPreviewDialog";
+import { etiquetaService } from "@/services/etiquetaService";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface LoteTableProps {
   lotes: LoteResponse[];
@@ -32,6 +37,23 @@ export function LoteTable({
   onEdit,
   onDelete,
 }: LoteTableProps) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [printingId, setPrintingId] = useState<number | null>(null);
+
+  const handlePrint = async (id: number) => {
+    try {
+      setPrintingId(id);
+      const blob = await etiquetaService.obterLotePDFBlob([id]);
+      setPdfBlob(blob);
+      setPreviewOpen(true);
+    } catch {
+      toast.error("Erro ao gerar etiqueta");
+    } finally {
+      setPrintingId(null);
+    }
+  };
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
@@ -106,6 +128,15 @@ export function LoteTable({
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => handlePrint(lote.id)}
+                    disabled={printingId === lote.id}
+                    title="Visualizar Etiquetas"
+                  >
+                    <IconPrinter className={`h-4 w-4 ${printingId === lote.id ? 'animate-spin' : ''}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => onEdit(lote)}
                   >
                     <IconEdit className="h-4 w-4" />
@@ -123,6 +154,13 @@ export function LoteTable({
           ))}
         </TableBody>
       </Table>
+
+      <PdfPreviewDialog
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        pdfBlob={pdfBlob}
+        title="Visualização de Etiquetas"
+      />
     </div>
   );
 }

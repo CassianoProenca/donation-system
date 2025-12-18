@@ -35,9 +35,11 @@ public class MovimentacaoController {
             @RequestParam(required = false) Long usuarioId,
             @RequestParam(required = false) String dataInicio,
             @RequestParam(required = false) String dataFim,
+            @RequestParam(required = false) String busca,
             @PageableDefault(page = 0, size = 10, sort = "dataHora", direction = Sort.Direction.DESC) Pageable pageable) {
-        
-        return ResponseEntity.ok(movimentacaoService.listarComFiltros(tipo, loteId, usuarioId, dataInicio, dataFim, pageable));
+
+        return ResponseEntity.ok(
+                movimentacaoService.listarComFiltros(tipo, loteId, usuarioId, dataInicio, dataFim, busca, pageable));
     }
 
     @GetMapping("/simples")
@@ -78,10 +80,10 @@ public class MovimentacaoController {
     }
 
     @PostMapping
-    public ResponseEntity<MovimentacaoResponseDTO> criar(@Valid @RequestBody MovimentacaoRequestDTO dto, 
-                                                         @org.springframework.security.core.annotation.AuthenticationPrincipal 
-                                                         org.springframework.security.core.userdetails.UserDetails userDetails) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(movimentacaoService.criar(dto, userDetails.getUsername()));
+    public ResponseEntity<MovimentacaoResponseDTO> criar(@Valid @RequestBody MovimentacaoRequestDTO dto,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(movimentacaoService.criar(dto, userDetails.getUsername()));
     }
 
     @DeleteMapping("/{id}")
@@ -93,9 +95,8 @@ public class MovimentacaoController {
     @PostMapping("/montagem")
     public ResponseEntity<MovimentacaoResponseDTO> montarKit(
             @Valid @RequestBody MontagemKitRequestDTO dto,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal 
-            org.springframework.security.core.userdetails.UserDetails userDetails) {
-        
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(movimentacaoService.montarKit(dto, userDetails.getUsername()));
     }
